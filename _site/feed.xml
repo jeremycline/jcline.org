@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Jeremy Cline's Blog</title>
+    <description>This blog is about all things FOSS
+</description>
+    <link>https://www.jcline.org/</link>
+    <atom:link href="https://www.jcline.org/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Sun, 01 Apr 2018 18:35:06 -0400</pubDate>
+    <lastBuildDate>Sun, 01 Apr 2018 18:35:06 -0400</lastBuildDate>
+    <generator>Jekyll v3.7.3</generator>
+    
+      <item>
+        <title>A GNU Start</title>
+        <description>&lt;p&gt;I am thrilled to say that last week I became the newest member of the Fedora
+Engineering team. I will be working on the applications that help the Fedora
+community create a fantastic Linux distribution. I’m excited to be joining the
+team and I look forward to working with everyone!&lt;/p&gt;
+
+&lt;p&gt;Previously, I worked on the &lt;a href=&quot;http://pulpproject.org/&quot;&gt;Pulp&lt;/a&gt; project, which is
+a content management system used in &lt;a href=&quot;https://access.redhat.com/products/red-hat-satellite&quot;&gt;Red Hat Satellite 6&lt;/a&gt;. I learned a great deal
+while working with some excellent engineers on this project.&lt;/p&gt;
+</description>
+        <pubDate>Sun, 25 Sep 2016 10:30:34 -0400</pubDate>
+        <link>https://www.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</link>
+        <guid isPermaLink="true">https://www.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</guid>
+        
+        
+        <category>blog</category>
+        
+        <category>fedora</category>
+        
+      </item>
+    
+      <item>
+        <title>A Beginning</title>
+        <description>&lt;p&gt;For a long time I’ve allowed &lt;a href=&quot;https://www.jcline.org&quot;&gt;jcline.org&lt;/a&gt; to simply
+serve the default welcome page for Apache. I decided to change that today, so
+I naturally started a blog. I don’t have much to blog about, so this is likely
+the first and last blog post, but at least it’s slightly more interesting than
+the old welcome page.&lt;/p&gt;
+</description>
+        <pubDate>Sun, 05 Jun 2016 11:32:52 -0400</pubDate>
+        <link>https://www.jcline.org/blog/update/2016/06/05/the-end.html</link>
+        <guid isPermaLink="true">https://www.jcline.org/blog/update/2016/06/05/the-end.html</guid>
+        
+        
+        <category>blog</category>
+        
+        <category>update</category>
+        
+      </item>
+    
+  </channel>
+</rss>

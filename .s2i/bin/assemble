@@ -5,9 +5,6 @@ echo "Executing standard s2i assembly"
 ret=$?
 
 if [ $ret -eq 0 ]; then
-	echo "Building site..."
-	gem install jekyll
-	jekyll build
 	mv _site/* .
 	echo "Done!"
 else
