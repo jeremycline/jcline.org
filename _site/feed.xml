@@ -4,10 +4,10 @@
     <title>Jeremy Cline's Blog</title>
     <description>This blog is about all things FOSS
 </description>
-    <link>https://www.jcline.org/</link>
-    <atom:link href="https://www.jcline.org/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sun, 01 Apr 2018 18:35:06 -0400</pubDate>
-    <lastBuildDate>Sun, 01 Apr 2018 18:35:06 -0400</lastBuildDate>
+    <link>https://blog-www.apps.os.jcline.org/</link>
+    <atom:link href="https://blog-www.apps.os.jcline.org/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Sun, 01 Apr 2018 18:43:01 -0400</pubDate>
+    <lastBuildDate>Sun, 01 Apr 2018 18:43:01 -0400</lastBuildDate>
     <generator>Jekyll v3.7.3</generator>
     
       <item>
@@ -22,8 +22,8 @@ a content management system used in &lt;a href=&quot;https://access.redhat.com/p
 while working with some excellent engineers on this project.&lt;/p&gt;
 </description>
         <pubDate>Sun, 25 Sep 2016 10:30:34 -0400</pubDate>
-        <link>https://www.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</link>
-        <guid isPermaLink="true">https://www.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</guid>
+        <link>https://blog-www.apps.os.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</link>
+        <guid isPermaLink="true">https://blog-www.apps.os.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</guid>
         
         
         <category>blog</category>
@@ -41,8 +41,8 @@ the first and last blog post, but at least it’s slightly more interesting than
 the old welcome page.&lt;/p&gt;
 </description>
         <pubDate>Sun, 05 Jun 2016 11:32:52 -0400</pubDate>
-        <link>https://www.jcline.org/blog/update/2016/06/05/the-end.html</link>
-        <guid isPermaLink="true">https://www.jcline.org/blog/update/2016/06/05/the-end.html</guid>
+        <link>https://blog-www.apps.os.jcline.org/blog/update/2016/06/05/the-end.html</link>
+        <guid isPermaLink="true">https://blog-www.apps.os.jcline.org/blog/update/2016/06/05/the-end.html</guid>
         
         
         <category>blog</category>

@@ -5,7 +5,9 @@ echo "Executing standard s2i assembly"
 ret=$?
 
 if [ $ret -eq 0 ]; then
+	ls | grep -v _site | xargs rm -rf
 	mv _site/* .
+	rm -rf _site/
 	echo "Done!"
 else
 	echo "Standard s2i assembly failed, aborting!"
