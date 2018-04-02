@@ -6,9 +6,98 @@
 </description>
     <link>https://blog-www.apps.os.jcline.org/</link>
     <atom:link href="https://blog-www.apps.os.jcline.org/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sun, 01 Apr 2018 18:43:01 -0400</pubDate>
-    <lastBuildDate>Sun, 01 Apr 2018 18:43:01 -0400</lastBuildDate>
+    <pubDate>Sun, 01 Apr 2018 21:02:10 -0400</pubDate>
+    <lastBuildDate>Sun, 01 Apr 2018 21:02:10 -0400</lastBuildDate>
     <generator>Jekyll v3.7.3</generator>
+    
+    
+      <item>
+        <title>Fedora CI and Infrastructure Hackathon 2017</title>
+        <description>&lt;p&gt;Last week, the Fedora Infrastructure folks joined forces with people from
+CentOS, Fedora QE, Factory 2.0, and others to work on the design and
+implementation of continuous integration for the Fedora Project in the
+great &lt;a href=&quot;https://fedoraproject.org/wiki/CI_and_Infrastructure_Hackathon_2017&quot;&gt;Fedora CI and Infrastructure Hackathon of 2017&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;This was especially interesting for me since I had not had the opportunity
+to meet the majority of the people I’ve been working with for the last eight
+months.&lt;/p&gt;
+
+&lt;p&gt;The work we did can be broadly split into two categories as the title
+implies: general infrastructure work, and CI work specifically.&lt;/p&gt;
+
+&lt;h1 id=&quot;infrastructure&quot;&gt;Infrastructure&lt;/h1&gt;
+
+&lt;p&gt;The general infrastructure mostly took the form of documentation. Fedora
+Infrastructure had a set of Standard Operating Procedures (SOPs) used to
+document how to maintain the various applications we use. I recently took
+this documentation (which was already conveniently written in ReStructured
+Text) and turned it into a &lt;a href=&quot;http://www.sphinx-doc.org/en/stable/index.html&quot;&gt;Sphinx&lt;/a&gt;
+project. The project, &lt;a href=&quot;https://pagure.io/infra-docs&quot;&gt;infra-docs&lt;/a&gt;, aims to
+cover both developer and system administrator best practices.&lt;/p&gt;
+
+&lt;p&gt;As part of the Hackathon we worked on expanding the developer documentation
+with two sections.&lt;/p&gt;
+
+&lt;h2 id=&quot;authentication-documentation&quot;&gt;Authentication Documentation&lt;/h2&gt;
+
+&lt;p&gt;The first day of the hackathon we covered how authentication works in Fedora
+Infrastructure with &lt;a href=&quot;https://pagure.io/ipsilon/&quot;&gt;Ipsilon&lt;/a&gt;. The goal is to
+move applications from the old OpenID 2.0 to OpenID Connect which is based
+on OAuth 2.0.&lt;/p&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://pagure.io/infra-docs/pull-request/40&quot;&gt;documentation&lt;/a&gt; introduces
+developers to OpenID Connect and points them to the various RFCs and specs
+for in-depth reading. It also overs the set of libraries that should be used
+for OpenID Connect so that all our applications use the same set of libraries.&lt;/p&gt;
+
+&lt;h2 id=&quot;bdr-documentation&quot;&gt;BDR Documentation&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;http://bdr-project.org/docs/stable/index.html&quot;&gt;Bi-directional replication&lt;/a&gt; is
+a multi-master replication system for PostgreSQL designed for replication
+across geographically distributed clusters via asynchronous logical replication.&lt;/p&gt;
+
+&lt;p&gt;Our staging environment has a BDR cluster, but applications need to be aware of
+(and designed for) BDR. The initial &lt;a href=&quot;https://fedora-infra-docs.readthedocs.io/en/latest/dev-guide/db.html&quot;&gt;developer documentation&lt;/a&gt; for BDR in
+Fedora were written as part of the hackathon.&lt;/p&gt;
+
+&lt;h1 id=&quot;continuous-integration&quot;&gt;Continuous Integration&lt;/h1&gt;
+
+&lt;p&gt;The second big focus of the hackathon for me was the application changes required
+for the continuous integration effort in Fedora.&lt;/p&gt;
+
+&lt;h2 id=&quot;a-new-fedmsg-relay&quot;&gt;A New FedMSG Relay&lt;/h2&gt;
+
+&lt;p&gt;One task we needed to tackle was getting the &lt;a href=&quot;https://ci.centos.org/&quot;&gt;CentOS CI infrastructure&lt;/a&gt;
+publishing &lt;a href=&quot;https://fedmsg.readthedocs.io/en/latest/&quot;&gt;fedmsgs&lt;/a&gt; that the Fedora infrastructure
+could consume. We require that messages be signed using x509 certificates since messages are
+transmitted without any other form of authenticity. The ultimate plan is for the Jenkins plugin
+to sign the messages before initially sending them, but it cannot currently do that, so as a
+temporary work-around I worked with &lt;a href=&quot;https://wiki.centos.org/BrianStinson&quot;&gt;Brian Stinson&lt;/a&gt; to
+introduce a new type of fedmsg relay that &lt;a href=&quot;https://github.com/fedora-infra/fedmsg/pull/409&quot;&gt;signs messages it relays&lt;/a&gt;. This allows all messages coming out of
+ci.centos.org to be signed as they’re relayed out to the world.&lt;/p&gt;
+
+&lt;h2 id=&quot;greenwave&quot;&gt;GreenWave&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://pagure.io/greenwave/&quot;&gt;GreenWave&lt;/a&gt; (formally known as PolicyEngine) is a new web service
+we’re introducing to Fedora Infrastructure that allows users to define policies about what checks
+need to pass before an artifact is considered “good”. Policies are defined globally, per product
+(e.g. Fedora 26) and for a product and components (e.g. python-requests in Fedora 26). For example,
+we could define that all builds must pass a &lt;code class=&quot;highlighter-rouge&quot;&gt;depcheck&lt;/code&gt; test to be considered “good”.&lt;/p&gt;
+
+&lt;p&gt;This will be used by, among other things, Bodhi to automatically gate updates. Given that, we need
+a prototype of the service sooner rather than later, so I started working on that.&lt;/p&gt;
+</description>
+        <pubDate>Thu, 18 May 2017 12:36:13 -0400</pubDate>
+        <link>https://blog-www.apps.os.jcline.org/blog/fedora/2017/05/18/ci-and-infrastructure-hackathon-2017.html</link>
+        <guid isPermaLink="true">https://blog-www.apps.os.jcline.org/blog/fedora/2017/05/18/ci-and-infrastructure-hackathon-2017.html</guid>
+        
+        
+        <category>blog</category>
+        
+        <category>fedora</category>
+        
+    </item>
+    
     
     
       <item>

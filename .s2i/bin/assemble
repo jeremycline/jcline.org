@@ -6,6 +6,7 @@ ret=$?
 
 if [ $ret -eq 0 ]; then
 	ls | grep -v _site | xargs rm -rf
+	rm -rf .sass-cache
 	mv _site/* .
 	rm -rf _site/
 	echo "Done!"

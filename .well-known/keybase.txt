@@ -1,0 +1,72 @@
+==================================================================
+https://keybase.io/jcline
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of https://www.jcline.org
+  * I am jcline (https://keybase.io/jcline) on keybase.
+  * I have a public key with fingerprint AF3C 99C7 B1BF 22C0 FD41  5D2B C6C8 9D21 F194 C642
+
+To do so, I am signing this object:
+
+{
+    "body": {
+        "key": {
+            "eldest_kid": "01011e64d76971d3648af2d378027dcd6688bedd9b298c670fd491ea2032d988b8300a",
+            "fingerprint": "af3c99c7b1bf22c0fd415d2bc6c89d21f194c642",
+            "host": "keybase.io",
+            "key_id": "c6c89d21f194c642",
+            "kid": "01011e64d76971d3648af2d378027dcd6688bedd9b298c670fd491ea2032d988b8300a",
+            "uid": "64f00867a9242d2e7051156dd7af2a19",
+            "username": "jcline"
+        },
+        "service": {
+            "hostname": "www.jcline.org",
+            "protocol": "https:"
+        },
+        "type": "web_service_binding",
+        "version": 1
+    },
+    "ctime": 1492530785,
+    "expire_in": 157680000,
+    "prev": "d5fee9962034ae43adf28e671681d270354a1ed17eb3b77fc7f2158e62cb0387",
+    "seqno": 3,
+    "tag": "signature"
+}
+
+which yields the signature:
+
+-----BEGIN PGP MESSAGE-----
+
+owGtUm1QVFUYXhYXhCLMBoaCrC5Wg+zgved+r0uRwCoBrkBMyNSs995zLnsF7y67
+CwsKxVSTMWRiIETjOE4obZJYTtNEhMJINVoQURofzUQhCo0GGAlDSt1L9q+fnT9n
+zvs+z3Oe5523PiLYYAx6Mx4/8N5p21jQV9OioeAm49uLiS5YiVn2YsVo5UIlEHl9
+jmIFYhYMJ3CCQAwFWYZnCUgyFCfIAJIshwMWSpBhOE5EEPIi4DmJYXEZUjyBBICT
+APJajyNxXMDMmKyoRcjj9iiqT5MVZFLieYkVCVEGQNJZBA2BKDESx0NAyARPSQwF
+NKLT5dUZmjlR8KIkxaXVtIdjxd5/4P9n32Urcgwl4zjHsAIPKAABYnGaIGgGQlZT
+FQheB3qRRxV2Iw29SypRVIRVmzGtVq5ISB+rnuNO3+/3J/2DSXJ5ijSu2+PyuSRX
+idZz+nxur0Xn+irdK2AkOu7IOERFhdocNUY58ngVl4pZCA0p+RRdl6B4QJM4y9Fm
+DFW4FQ9yKDqCZhkO147+DyrXJCEtI8TzBYyWlhIQRQpQBhxiWILhCAhYnKQpgUCQ
+YJFIiiwrS6wMCFpDAEnESY7F9GSlqguzkJpPoUjT9CpFquAr82ixw2uNcasMQUZD
+iMmob5ghPGzNv2u3MB25zB1//MALztx8Y0/cyOyxAN9hnOwoR84E+8bl2/vurU2y
+pzwVmSkvH517O682vcbzSuS1tB7zVP1k++ntOTttW/jkQH3+a/Pb2vYMPxu+9lzi
+jbQMe9+pGxOFptDX3bkCzaQenHs5YlvwoW7H9fv7re3z438Rv2d9b+lc/HWsriv2
+EaeCmbaescU2v+9vdq8/Cj8UatUTD1Xv8v708ebUocUU1Xaw98LOsN74Dd/sm1z/
+6hHbTFR3zdTPq63t423f/nZXY+RL2/MHwI6l3LC8NeU3K5v6bt+y2Dc284+OVI0G
+X2zYmvyBYT4+7lqgQfQfW4qIHZk+z0S3vBU5Q5s+vWUbaAfU1ZDh/QVTiQP1gQvk
+ROGo82RL57qKYnYp4mlfcW9oCEg8WxBkznrQGt+Vee7Q81+AE8xgr7dVPoPJTXZj
+dXSNvS6mrdTWrZalL3TGnM8/PDY7c/mzrnk+uu/JnJzFhN2x1tGkI7Qpe+6N1d+9
+I8wM52/O7KhbWMo4aX2uRd1f1V5x38PpMQxKyx04PPjR3RNns0anszOyG1MX/7gy
+NHjplx8/TwtEje9xKzNdm4bXLgz0b9kwlHDqiXdHr6SU9ngaL//wYt+Or633FIJL
+RNPU8YaL4fOhYdfzYo21rVfXPcClPbPqsU+GmlK+rGpwmDJCl6Nn/+yYg5ta+yej
+/D3Jg0rwOPwb
+=SDbc
+-----END PGP MESSAGE-----
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/jcline
+
+==================================================================
