@@ -4,10 +4,10 @@
     <title>Jeremy Cline's Blog</title>
     <description>This blog is about all things FOSS
 </description>
-    <link>https://blog-www.apps.os.jcline.org/</link>
-    <atom:link href="https://blog-www.apps.os.jcline.org/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sun, 01 Apr 2018 21:02:10 -0400</pubDate>
-    <lastBuildDate>Sun, 01 Apr 2018 21:02:10 -0400</lastBuildDate>
+    <link>https://www.jcline.org/</link>
+    <atom:link href="https://www.jcline.org/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Sun, 01 Apr 2018 22:04:32 -0400</pubDate>
+    <lastBuildDate>Sun, 01 Apr 2018 22:04:32 -0400</lastBuildDate>
     <generator>Jekyll v3.7.3</generator>
     
     
@@ -88,8 +88,8 @@ we could define that all builds must pass a &lt;code class=&quot;highlighter-rou
 a prototype of the service sooner rather than later, so I started working on that.&lt;/p&gt;
 </description>
         <pubDate>Thu, 18 May 2017 12:36:13 -0400</pubDate>
-        <link>https://blog-www.apps.os.jcline.org/blog/fedora/2017/05/18/ci-and-infrastructure-hackathon-2017.html</link>
-        <guid isPermaLink="true">https://blog-www.apps.os.jcline.org/blog/fedora/2017/05/18/ci-and-infrastructure-hackathon-2017.html</guid>
+        <link>https://www.jcline.org/blog/fedora/2017/05/18/ci-and-infrastructure-hackathon-2017.html</link>
+        <guid isPermaLink="true">https://www.jcline.org/blog/fedora/2017/05/18/ci-and-infrastructure-hackathon-2017.html</guid>
         
         
         <category>blog</category>
@@ -112,8 +112,8 @@ a content management system used in &lt;a href=&quot;https://access.redhat.com/p
 while working with some excellent engineers on this project.&lt;/p&gt;
 </description>
         <pubDate>Sun, 25 Sep 2016 10:30:34 -0400</pubDate>
-        <link>https://blog-www.apps.os.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</link>
-        <guid isPermaLink="true">https://blog-www.apps.os.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</guid>
+        <link>https://www.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</link>
+        <guid isPermaLink="true">https://www.jcline.org/blog/fedora/2016/09/25/a-gnu-start.html</guid>
         
         
         <category>blog</category>
