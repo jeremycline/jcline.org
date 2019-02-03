@@ -9,7 +9,7 @@
 title: Jeremy Cline's Blog
 email: jeremy@jcline.org
 description: > # this means to ignore newlines until "baseurl:"
-  This blog is about all things FOSS
+  Blog about various things open source
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://www.jcline.org" # the base hostname & protocol for your site
 github_username:  jeremycline
