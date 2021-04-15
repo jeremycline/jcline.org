@@ -325,7 +325,7 @@ range.
 We can convert the output to integer values between 0 and 255 by multiplying
 the encoded luminance value by 255 and rounding:
 
-![Graph of the gamma function with gamma = 1/2.4 mapped to 0-255](/assets/gamma-encoded/luminance-255.png)
+![Graph of the gamma function with gamma = 1/2.4 mapped to 0-255](/assets/gamma-encoded-mapped-255.png)
 
 Now, instead of wasting many of our precious bits on luminance steps on the
 high end that no one can see, we're spending most of them on low luminance
@@ -339,13 +339,13 @@ where some steps are about the just-noticeable difference line.
 We can fix this by increasing the number of bits used. What happens if we move
 to 10 or even 12 bits? At 12 bits per component, we have 4096 steps.
 
-![Graph of the gamma function with gamma = 1/2.4 mapped to 0-4096](/assets/gamma-encoded/luminance-4096.png)
+![Graph of the gamma function with gamma = 1/2.4 mapped to 0-4096](/assets/gamma-encoded-mapped-4096.png)
 
-This looks pretty good, but what if we adjust the graph to display actual nit
-values for the linear light rather? Here's the same graph with linear light
+At first glance this seems fine, but what if we adjust the graph to display
+actual nit values for the linear light? Here's the same graph with linear light
 using a range of 0-1000 nits.
 
-![Graph of the gamma function with gamma = 1/2.4 mapped to 0-4096](/assets/gamma-encoded/luminance-4096-1knits.png)
+![Graph of the gamma function with gamma = 1/2.4 mapped to 0-4096](/assets/gamma-encoded-mapped-4096-1knits.png)
 
 We can see that fewer than half our steps, or approximately 2000, land in the
 luminance ranges we use today for standard dynamic range displays. Once again,
@@ -353,7 +353,7 @@ we're allocating too many steps to the very high luminance levels where the
 human eye becomes less and less sensitive. This is even worse as the luminance
 range increases:
 
-![Graph of the gamma function with gamma = 1/2.4 mapped to 0-4096](/assets/gamma-encoded/luminance-4096-10knits.png)
+![Graph of the gamma function with gamma = 1/2.4 mapped to 0-4096](/assets/gamma-encoded-mapped-4096-10knits.png)
 
 Thus, for displays with a higher dynamic range, we may want to adjust the
 transfer function to get the most value out of each bit we spend.
