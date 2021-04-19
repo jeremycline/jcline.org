@@ -16,7 +16,7 @@ confusing, but may help me think through HDR better. The following content is
 likely wrong as I have no background in colorimetry, the human visual system,
 or graphics generally.
 
-# Background
+## Background
 
 Before attempting to understand dynamic range, I found it helpful to understand
 the go through the basics of electromagnetic radiation (light) and how the
@@ -25,7 +25,7 @@ for human consumption.  With an understanding of how to do that, we can
 complete our ultimate goal of tricking the human visual system into seeing
 extremely realistic cats even if there are no cats around.
 
-## Light
+### Light
 
 Human eyes detect a very small range of electromagnetic radiation. Light can be
 described as a wave with an amplitude and frequency/wavelength or a particle
@@ -41,7 +41,7 @@ green in 525-560nm range, and red in the 630-700nm range.
 More photons of a given wavelength are perceived by humans as a brighter light
 of the color associated with the wavelength.
 
-## Luminance
+### Luminance
 
 [Luminance](https://en.wikipedia.org/wiki/Luminance) is the measure of the
 amount of light in the *visibile spectrum* that passes through an area.  The SI
@@ -63,7 +63,7 @@ might already be familiar with this as
 levels. The fact that human sensitivity to luminance is non-linear becomes very
 important later when we need to compress data.
 
-## Human Visual System
+### Human Visual System
 
 The eye is composed of two general types of cells. The rod cells which are very
 sensitive and can detect very low amplitude (brightness) light waves, but don't
@@ -90,7 +90,7 @@ luminance levels, it cannot do so all at once. If you're outside on a sunny day
 and walk into a dark room, it takes some time for your eyes to adjust to the
 new luminance levels.
 
-## Displays
+### Displays
 
 There are several ways to display images for human consumption. One way is to
 reflect light off a surface that absorbs some frequencies of light and reflect
@@ -132,7 +132,7 @@ range than we actually experience. In other words, we have to compress the
 luminance range of our world to fit the luminance range of the display. This
 process is often referred to as "tone-mapping".
 
-## Dynamic Range
+### Dynamic Range
 
 Dynamic range is the ratio between the smallest value and largest value. When
 used in reference to displays, the value is luminance.
@@ -161,14 +161,14 @@ specifications](https://displayhdr.org/performance-criteria/).
 This higher dynamic range ultimately means the way in which we compress the
 luminance range (tone-map) needs to change.
 
-# Light from Scene to Display
+## Light from Scene to Display
 
 In this section, we'll cover the journey of an image from its creation to its
 display. Perhaps the most self-contained example is a modern video games. This
 allows us to dodge the added complication of camera sensors, but the process
 for real-world image capture is similar.
 
-## Scene-referred Lighting
+### Scene-referred Lighting
 
 Video games typically model a world complete with realistic lighting.  When
 they do this, they need to work with "real world" luminance levels. For
@@ -203,7 +203,7 @@ matches up with the way the human eye detects luminance levels, we can save a
 *lot* of bits. In fact, for the "standard" dynamic range, we can manage with
 only 8 bits (256 luminance levels) per color (24 bits total for RGB).
 
-## Tone-mapping
+### Tone-mapping
 
 In order to convert scene-referred, real world luminance to a range for our
 target display, we need to:
@@ -244,7 +244,7 @@ thorough examination of the process than this blog post.
 This process is occasionally referred to as an "opti-optical transfer function"
 or "OOTF" as it maps optical (luminance) values to different optical values.
 
-## Encoding
+### Encoding
 
 Once we've tone-mapped our content to use the display's luminance range, we
 need to send the content off to the display so that we can see it. As the
@@ -265,13 +265,13 @@ is `g(f(x)) = x`. This is called the "inverse transfer function",
 "electro-optical transfer function", or "EOTF" since it converts the
 "on-the-wire" values back to optical values.
 
-### Encoding SDR
+#### Encoding SDR
 
 The "standard dynamic range" is not particularly standard, but usually tops out
 around 300 nits. Typically, 8 bits per RGB component is used. 8 bits allow us
 to express 256 luminance levels per component.
 
-#### The Naïve Approach
+##### The Naïve Approach
 
 One method would be to evenly spread each level across the luminance range.
 What would this look like? In our thought experiment, we'll assume the
@@ -301,7 +301,7 @@ resolution and framerate.
 Instead, we want to take these wasted levels at high luminances and use them in
 lower luminances.
 
-#### Gamma
+##### Gamma
 
 The "gamma" transfer function has a long and interesting history and is part of
 the [sRGB standard](https://en.wikipedia.org/wiki/SRGB). The sRGB version is
@@ -358,7 +358,7 @@ range increases:
 Thus, for displays with a higher dynamic range, we may want to adjust the
 transfer function to get the most value out of each bit we spend.
 
-### Encoding Higher Dynamic Ranges
+#### Encoding Higher Dynamic Ranges
 
 As we saw when examining the gamma transfer function, it works reasonably
 well for low luminance ranges, but as the range increases it starts to be
@@ -366,14 +366,14 @@ sub-optimal.
 
 There are two major approaches for higher dynamic range encoding.
 
-#### The Perceptual Quantizer
+##### The Perceptual Quantizer
 
 The [Perceptual Quantizer](https://en.wikipedia.org/wiki/Perceptual_Quantizer)
-(PQ) transfer function, standardized with the much less cool name "SMPTE ST
-2084", is unlike the gamma transfer function in that it is defined to cover a
-well-defined luminance range, rather than just being fit to whatever the
-display happens to be capable of. The luminance range the curve is defined to
-cover is 0.0001-10,000 cd/m².
+(PQ) transfer function, sometimes referred to by the much less cool name "SMPTE
+ST 2084", defines a new curve to use for encoding. It is unlike the gamma
+transfer function in that it is defined to cover a well-defined luminance
+range, rather than just being fit to whatever the display happens to be capable
+of. The luminance range the curve is defined to cover is 0.0001-10,000 cd/m².
 
 This is a useful concept when encoding the content as we can now express
 physical quantities in addition to "more/less luminance". It gives the decoding
@@ -385,4 +385,97 @@ The curve looks like:
 
 This graph is only part of the curve, and you can see the slope is so extreme
 it doesn't render very well. It packs a vast majority of the code points into
-the lower luminance range.
+the lower luminance range where the eye is most discerning. Currently, it's
+common to use this curve with 10 bits per component.
+
+The function that describes this curve is more complicated than the gamma curve
+so I won't attempt to render it poorly here. The curious can consult the
+Wikipedia page linked above.
+
+The perceptual quantizer transfer function is paired with metadata describing
+the image or images it is used to encode. This metadata is usually the primary
+colors of the display used to create the content (which red, green, and blue)
+as well as luminance statistics like the image's minimum, maximum, and average
+luminance. This metadata is particularly useful when the display used to create
+the content is not the same as the display used to view the content (movies, TV
+shows, etc).
+
+The PQ curve supports encoding luminance up to 10,000 nits, but there are no
+consumers displays capable of that. Even professional displays built for
+movie-making are well short of that, currently around 4,000 nits. This is still
+much higher than current consumer displays, so the metadata can be used to
+further tone-map the content from the levels the film studio used to the
+capabilities of the individual display. In the future, when consumer monitors
+become more capable, the same films will look better as they require less
+tone-mapping and the original intent can be more accurately rendered.
+
+##### The Hybrid Log-Gamma
+
+As the name suggests, the second approach for higher dynamic range encoding is
+to use a hybrid of the gamma function and a log function. The [hybrid
+log-gamma](https://en.wikipedia.org/wiki/Hybrid_Log-Gamma) (HLG) curve is
+designed with backwards-compatibility in mind.
+
+HLG uses a piecewise function defined as follows when the input luminance has
+been normalized to a range of 0-1:
+
+- When the input luminance `L` is between 0 and 1/12: `sqrt(3) * L^0.5` (this
+  is our old friend the gamma function `f(x) = Axᵞ`, with `A = 1.732` and `𝛾 =
+  1/2`)
+
+- When input luminance `L` is between 1/12 and 1: `a * ln(12L - b)` where `a =
+  0.17883277` and `b = 1 - 4a`.
+
+As this encoding scheme is defined in terms of relative luminance like the
+gamma transfer function, there is no metadata for tone-mapping.
+
+### Transmission and Display
+
+Once we've encoded the image with a transfer function the display supports, the
+bits are sent to the display via HDMI or DisplayPort. At this point, what
+happens next is up to whatever is on the other end of the cable. I have no
+pulled apart a display and learned what secrets it holds, but we can make some
+reasonable guesses without destroying anything:
+
+- If metadata is provided (PQ-encoded images only), the display examines it and
+  determines of any tone-mapping is required due to the content exceeding its
+  capabilities.
+
+- If the display includes light sensors to detect ambient light levels, it
+  might decide to tone-map the content, even if it's capable of displaying all
+  luminance levels encoded.
+
+- Displays tend to include configuration to alter the color and brightness. It
+  will take these into account when deciding if/how to tone-map or gamut-map
+  the content we gave it.
+
+- Some gamut-mapping and tone-mapping will occur in the display depending on all
+  the above variables, at which point it will emit some light.
+
+Now, that's a very high-level overview of the process, but we can map these
+high-level steps to portions of the Linux desktop and discuss what needs to
+change in order for us to support HDR.
+
+## HDR In the Linux Desktop
+
+Now that we understand HDR - a larger luminance range that requires more bits
+per component and a new transfer function to encode that luminance - we can
+examine the work required to use it in a "standard" Linux desktop. As we'll
+see, it's already partially usable in "non-standard" Linux environments.
+
+To do this, we'll examine each portion of the stack, starting with the kernel
+and working our way up.
+
+### The Kernel
+
+
+### Wayland
+
+
+### Mesa
+
+
+### Client Frameworks
+
+
+### Media Libraries
