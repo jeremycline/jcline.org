@@ -466,16 +466,75 @@ see, it's already partially usable in "non-standard" Linux environments.
 To do this, we'll examine each portion of the stack, starting with the kernel
 and working our way up.
 
+Let's review the high-level requirements:
+
+- We need to be able to determine what output formats the display or displays
+  we're targeting are capable of. This includes the color primaries of the
+  display, the luminance capabilities, what transfer functions the display can
+  decode, and how many bits per component are permitted. This allows us to
+  determine what output encoding to use.
+
+- We need to be able to express the transfer function, bit depth, color space,
+  and, if the PQ transfer function is in use, the HDR metadata for our content
+  all the way from applications to the hardware transmitting to the display. This
+  tells us how content was encoded.
+
+- Somewhere we need to make the application's content encoding match the output
+  encoding, even when there are multiple applications on the screen, even when
+  they overlap, even when they are partially transparent and need to be blended
+  together.
+
+If you have ever worked with text content, you're probably familiar with text
+encoding. Adding HDR support is very similar to adding support for Unicode when
+previously everything assumed content was encoded with ASCII.
+
 ### The Kernel
+
+As the layer closest to the hardware, the kernel throws us from our high-level
+overview deep into the nitty-gritty details of hardware support of high-dynamic
+range content. Fortunately, a good deal of work has already been done in the
+kernel.
+
+#### Display Capabilities
+
+##### EDID
+
+Discuss EDID and relevant extensions
+
+##### DisplayID
+
+Discuss DisplayID and its relation to EDID
+
+
+#### Providing Content Encoding and Metadata
+
+Userspace APIs for content encoding, metadata, so on.
+
+
+#### Accelerated Operations
+
+Discuss special-purpose hardware components to make the process more efficient.
+
+##### Color Space Conversions
+
+##### Blending with Planes
+
+##### Encoding
 
 
 ### Wayland
 
+Cover Wayland protocol extensions to include content encoding and metadata
 
 ### Mesa
 
+Discuss the EGL/WSI layer that communicates from the graphics client to the
+server (wayland) details about buffers (encoding, metadata)
 
 ### Client Frameworks
 
+Tools on top of Mesa to create the content.
 
 ### Media Libraries
+
+ffmpeg/gstreamer/etc that deals with encoded media.
