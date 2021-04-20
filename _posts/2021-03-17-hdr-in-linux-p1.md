@@ -465,9 +465,10 @@ change in order for us to support HDR.
 ## HDR In the Linux Desktop
 
 Now that we understand HDR - a larger luminance range that requires more bits
-per component and a new transfer function to encode that luminance - we can
-examine the work required to use it in a "standard" Linux desktop. As we'll
-see, it's already partially usable in "non-standard" Linux environments.
+per component, a new transfer function to encode that luminance, and
+potentially some metadata - we can examine the work required to use it in a
+"standard" Linux desktop. As we'll see, it's already partially usable in
+"non-standard" Linux environments.
 
 To do this, we'll examine each portion of the stack, starting with the kernel
 and working our way up.
@@ -496,36 +497,140 @@ previously everything assumed content was encoded with ASCII.
 
 ### The Kernel
 
-As the layer closest to the hardware, the kernel throws us from our high-level
-overview deep into the nitty-gritty details of hardware support of high-dynamic
-range content. Fortunately, a good deal of work has already been done in the
+Since the kernel deals with talking to hardware, it's the first stop in making
+all this work. Fortunately, a good deal of work has already been done in the
 kernel.
 
 #### Display Capabilities
 
+The first thing we need to be able to do is determine the capabilities of the
+display we're preparing content for. We need to know:
+
+- The exactly color of each primary on the display (chromaticity coordinates).
+
+- The maximum luminance. Ideally this would include the peak luminance, what
+  percentage of the screen can achieve peak luminance at once, the maximum
+  luminance that can be sustained on the entire display, and so on.
+  Unfortunately, at the moment much of this information might not be available.
+
+- The minimum luminance.
+
+- The types of HDR metadata it supports. These fall into two categories:
+  static and dynamic. Static metadata applies to the entire piece of media,
+  whereas dynamic metadata can change from scene to scene or even frame to
+  frame. There are several metadata formats, so we need to know which formats
+  we can use.
+
 ##### EDID
 
-Discuss EDID and relevant extensions
+Some of the display capabilities are listed in the
+[EDID](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data). The
+EDID structure is made available to userspace by the kernel in the [EDID
+connector
+property](https://www.kernel.org/doc/html/latest/gpu/drm-kms.html#standard-connector-properties).
+
+The base EDID specification is [available
+online](https://vesa.org/vesa-standards/). The format describes the display
+chromaticity coordinates, but has no details on luminance. For that, we'll need
+to look to an extension block, which the base EDID specification describes how
+to parse.
+
+The CEA-861 specification describes an EDID extension that includes the HDR
+metadata the display supports, as well as the minimum, maximum, and average
+luminance levels the display wishes (if any). This structure is parsed in [the
+kernel](https://elixir.bootlin.com/linux/v5.11/source/drivers/gpu/drm/drm_edid.c).
+This gives us an idea of the structure format even if we don't have access to
+the specification itself.
+
+One unfortunate thing about EDID is that very few fields are required, so we
+can't be sure that we'll find all the details we need. This is true of most
+things in life, though, so we'll just have to do our best if the EDID is all we
+have.
 
 ##### DisplayID
 
-Discuss DisplayID and its relation to EDID
+[DisplayID](https://en.wikipedia.org/wiki/DisplayID) is meant to replace EDID.
+The latest revision, 2.0, was released in 2017 and its structure is inspired by
+the CEA-861 EDID extension. It has many more required fields, including a block
+on [display
+parameters](https://en.wikipedia.org/wiki/DisplayID#0x21_Display_Parameters)
+that includes:
 
+- Chromaticity coordinates
 
-#### Providing Content Encoding and Metadata
+- Maximum luminance (full display coverage)
 
-Userspace APIs for content encoding, metadata, so on.
+- Maximum luminance (10% display coverage)
 
+- Minimum luminance
 
-#### Accelerated Operations
+- Color depth (bits per component)
 
-Discuss special-purpose hardware components to make the process more efficient.
+- Display technology (OLED, LCD, etc)
+
+The [display
+interface](https://en.wikipedia.org/wiki/DisplayID#0x26_Display_interface_features)
+section, also required, covers supported color space and transfer functions.
+
+At this time, the DisplayID of a display is not exposed to userspace. It will
+be nice to have, but we will also have to live with the EDID for quite some
+time when the display doesn't offer a DisplayID table.
+
+#### Content Encoding, Metadata, and Accelerated Operations
+
+Graphics hardware typically provides hardware dedicated to efficiently decode,
+transform, and encode images with look-up tables (LUTs). These look-up tables
+approximate the smooth curve of the desired transfer function by mapping
+encoded values to optical values (de-gamma LUT) and optical values to encoded
+values (gamma LUT). Transformations could include color space conversions
+(CSC), blending images together into a single image for the display, and so on.
+
+The existence of these features and the number of look-up table entries is
+hardware-dependent, but we would like to use them when they are there and
+provide enough accuracy for the transfer function rather than calculating the
+values using, say, expensive and precious CPU or general purpose graphics
+shaders cycles.
 
 ##### Color Space Conversions
 
+The kernel exposes a few standard connector properties for [color
+management](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#color-management-properties)
+
+These include the aforementioned look-up tables for transfer functions
+(`GAMMA_LUT`, `DEGAMMA_LUT`) and the number of entries they support. We can use
+these when they have a sufficient number of entries to handle the 10 or 12 bits
+per component we need for the PQ or HLG transfer functions.
+
+The `CTM` property lets userspace define a color transformation matrix to
+describe how to map from the source color space to the destination color space.
+
 ##### Blending with Planes
 
+It is possible to have hardware blend ("composite") images together using
+[planes](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#plane-composition-properties).
+
+However, the documentation does not mention using the GAMMA_LUT or DEGAMMA_LUT
+to blend the content using linear, optical values so it is not clear what
+impact this feature has on color correctness.
+
+More work *may* be required here to use this feature when correct colors are a
+concern.
+
 ##### Encoding
+
+
+##### HDR Metadata
+
+The kernel exposes a `HDR_OUTPUT_METADATA` [connector
+property](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#standard-connector-properties)
+that userspace can use to send HDR metadata to the kernel and thus to the display.
+
+At this time there is only one [supported metadata
+type](https://www.kernel.org/doc/html/v5.11/gpu/drm-uapi.html#c.hdr_output_metadata),
+which corresponds to the static HDR metadata required for the HDR10 standard.
+
+Other standards that use dynamic metadata rather than static metadata include
+HDR10+ and Dolby Vision. More work is required here to support these standards.
 
 
 ### Wayland
