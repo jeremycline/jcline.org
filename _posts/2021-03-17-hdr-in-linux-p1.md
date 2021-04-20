@@ -423,8 +423,14 @@ been normalized to a range of 0-1:
   is our old friend the gamma function `f(x) = Axᵞ`, with `A = 1.732` and `𝛾 =
   1/2`)
 
-- When input luminance `L` is between 1/12 and 1: `a * ln(12L - b)` where `a =
-  0.17883277` and `b = 1 - 4a`.
+- When input luminance `L` is between 1/12 and 1: `a * ln(12L - b) + c` where `a =
+  0.17883277`, `b = 1 - 4a`, and `c = 0.55991073`.
+
+![The Gamma and Log curves in the HLG transfer function](/assets/hlg-encoded-luminance.png)
+
+In the above graph, the red curve is the gamma curve, the green curve is the
+log curve, and the vertical line is the point where the gamma curve stops being
+used in favor of the log curve when encoding.
 
 As this encoding scheme is defined in terms of relative luminance like the
 gamma transfer function, there is no metadata for tone-mapping.
