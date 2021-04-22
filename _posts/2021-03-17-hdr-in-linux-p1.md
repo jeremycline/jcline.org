@@ -90,6 +90,44 @@ luminance levels, it cannot do so all at once. If you're outside on a sunny day
 and walk into a dark room, it takes some time for your eyes to adjust to the
 new luminance levels.
 
+### Color Spaces
+
+When discussing displays and their capabilities you will hear about color
+spaces and perhaps see a diagram like this:
+
+![Chromaticity diagram by Paulschou at en.wikipedia, CC BY-SA 3.0 , via
+Wikimedia
+Commons](https://upload.wikimedia.org/wikipedia/commons/5/5f/CIE-1931_diagram_in_LAB_space.svg)
+
+There's a lot going on in this diagram and it is rather confusing (to me,
+anyway), so it's worth covering the basics. There are [some
+good](https://medium.com/hipster-color-science/a-beginners-guide-to-colorimetry-401f1830b65a)
+[blog
+posts](https://agraphicsguy.wordpress.com/2018/11/29/basic-color-science-for-graphics-engineers/)
+with much more detail.
+
+You'll notice the outside curve of this color blob has numbers marked along
+them. These are light wavelengths, and the outer curve is the color we see for
+that pure wavelength. On the bottom edge there are no wavelengths. This is
+because those colors are what we see when the long cones and the short cones
+both sense light. All the colors not on the edge of the curve are created by
+blending together multiple wavelengths of light.
+
+Often, you'll hear people talk about the "temperature" of light. This is in
+reference to how as objects heat up they begin emitting light in the visible
+spectrum. The curve starting on the red side, passing through the center, and
+continuing toward blue shows the mapping of temperature to colors.
+
+If we pick three points on this plane and form a triangle, we can create any
+color enclosed by the triangle by adding various ratios of those three colors
+together. These points have coordinates in this two-dimensional space, and we
+can describe the triangle by providing those coordinates. Using this approach,
+we can describe the colors a display can create by specifying three pairs of
+coordinates. This is the "color space".
+
+Note that this diagram does not include the luminance. Doing so creates a third
+dimension and can be used to visualize a "color volume".
+
 ### Displays
 
 There are several ways to display images for human consumption. One way is to
@@ -588,21 +626,28 @@ values (gamma LUT). Transformations could include color space conversions
 The existence of these features and the number of look-up table entries is
 hardware-dependent, but we would like to use them when they are there and
 provide enough accuracy for the transfer function rather than calculating the
-values using, say, expensive and precious CPU or general purpose graphics
-shaders cycles.
+values using, say, expensive CPU or general purpose graphics shaders cycles.
+
+##### Encoding and Decoding
+
+The hardware-backed look-up tables for encoding and decoding content with an
+arbitrary transfer function are exposed to userspace as properties attached to
+CRTC objects and are documented in the [color
+management](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#color-management-properties)
+section of the KMS interface.
+
+The `GAMMA_LUT` and `DEGAMMA_LUT` properties and their respective lengths allow
+us to approximate the smooth curves we saw in the section on transfer functions.
 
 ##### Color Space Conversions
 
-The kernel exposes a few standard connector properties for [color
+The documentation for [color
 management](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#color-management-properties)
-
-These include the aforementioned look-up tables for transfer functions
-(`GAMMA_LUT`, `DEGAMMA_LUT`) and the number of entries they support. We can use
-these when they have a sufficient number of entries to handle the 10 or 12 bits
-per component we need for the PQ or HLG transfer functions.
-
-The `CTM` property lets userspace define a color transformation matrix to
-describe how to map from the source color space to the destination color space.
+interfaces also mentions the `CTM` property. The `CTM` property lets userspace
+define a color transformation matrix to describe how to map from the source
+color space to the destination color space. When combined with a de-gamma LUT
+and gamma LUT, it can be used to efficiently decode, transform, and re-encode
+content for a particular color space.
 
 ##### Blending with Planes
 
@@ -615,9 +660,6 @@ impact this feature has on color correctness.
 
 More work *may* be required here to use this feature when correct colors are a
 concern.
-
-##### Encoding
-
 
 ##### HDR Metadata
 
@@ -635,12 +677,67 @@ HDR10+ and Dolby Vision. More work is required here to support these standards.
 
 ### Wayland
 
-Cover Wayland protocol extensions to include content encoding and metadata
+Graphical applications like Firefox have a client-server relationship with a
+Wayland compositor. The compositor services requests of client applications and
+handles the interactions between the kernel and userspace. The interfaces
+discussed in the section on the kernel are used by the Wayland compositor.
+
+The compositor is in control of which applications receive inputs like keyboard
+strokes and how the various applications are composed into a single image.
+However, it is not creating the content that fills that image. The graphical
+applications create the content, and are therefore in control of what color
+space is used and how the content is encoded.
+
+There needs to be a way for the client application to tell the compositor what
+the content encoding is. We need the equivalent of the `Content-Type` header
+used in email or HTTP. Unfortunately, the core Wayland protocols do not include
+a way for clients to express how the content has been encoded. Instead, it is
+assumed to be sRGB. This is a bit like assuming all text content in the world
+is ASCII. Depending on where you are in the world it's usually "right", but
+there's a bunch of text out there that is not encoded with ASCII and it becomes
+unreadable unless encoding is explicitly taken into account everywhere.
+
+Fortunately, Wayland allows us to define extensions to the protocol. There has
+been a [work-in-progress merge
+request](https://gitlab.freedesktop.org/wayland/wayland-protocols/-/merge_requests/14)
+to do just that. Regardless of the final form this protocol takes, we can
+expect that it will provide clients with a way to express:
+
+- The color space of the data.
+- The transfer function applied applied to the data.
+- The luminance range of the data, if applicable (HDR metadata).
+
+Additionally, it may include a way to explicitly express whether or not it
+intends to tone-map the content. Some applications, like video games or media
+creation applications like Blender, will want to handle tone-mapping content
+for the display themselves. Other applications will just want the application
+to match the brightness of desktop generally and leave the compositor to handle
+that. Finally, some applications like media players may be able to provide
+content that is not tone-mapped for the display, but includes the HDR metadata
+necessary for the display to handle tone-mapping itself.
+
+For a client to tone-map and gamut-map its content for a display, it needs to
+know what the display capabilities are, so the Wayland protocol extension also
+needs to provide a way for the compositor to inform clients of those
+capabilities.
 
 ### Mesa
 
-Discuss the EGL/WSI layer that communicates from the graphics client to the
-server (wayland) details about buffers (encoding, metadata)
+[EGL](https://www.khronos.org/registry/EGL/sdk/docs/man/html/eglCreatePlatformWindowSurface.xhtml) and [Vulkan](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#_wsi_swapchain) both include the color space and transfer function associated
+with surfaces. Additionally, both include extensions for expressing luminance
+details:
+[EXT_surface_SMPTE2086_metadata](https://www.khronos.org/registry/EGL/extensions/EXT/EGL_EXT_surface_SMPTE2086_metadata.txt)
+and
+[vkSetHdrMetadataEXT](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#_hdr_metadata).
+
+These functions just need to map the EGL and Vulkan color space definitions to
+Wayland definitions and send the data along to the Wayland compositor using the
+protocol decided upon when called.
+
+Ville Syrjälä created a proof-of-concept branch back in 2017 to do this, and I
+[rebased it](https://gitlab.freedesktop.org/jcline/mesa/-/tree/hdr_poc)
+recently to "work" with the latest Wayland protocol proposal. It needs more
+polish and, of course, a compositor to do something with the information.
 
 ### Client Frameworks
 
