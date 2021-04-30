@@ -1,7 +1,7 @@
 ---
 layout: post
-title:  "HDR in Linux"
-date:   2021-04-09 14:32:38 -0400
+title:  "HDR in Linux: Part 1"
+date:   2021-04-30 15:05:08 -0400
 categories: blog fedora graphics hdr
 ---
 
@@ -14,7 +14,7 @@ covering it, but that there's a huge amount of material can be rather
 confusing. I thought it best to add more material that is probably also
 confusing, but may help me think through HDR better. The following content is
 likely wrong as I have no background in colorimetry, the human visual system,
-or graphics generally.
+or graphics generally. I'd love to hear what makes no sense.
 
 ## Background
 
@@ -432,20 +432,21 @@ Wikipedia page linked above.
 
 The perceptual quantizer transfer function is paired with metadata describing
 the image or images it is used to encode. This metadata is usually the primary
-colors of the display used to create the content (which red, green, and blue)
-as well as luminance statistics like the image's minimum, maximum, and average
-luminance. This metadata is particularly useful when the display used to create
-the content is not the same as the display used to view the content (movies, TV
-shows, etc).
+colors of the display used to create the content as well as luminance
+statistics like the image's minimum, maximum, and average luminance. This
+metadata allows consumers of the content to perform better tone-mapping and
+gamut-mapping since it describes the exact color volume of the content.
 
 The PQ curve supports encoding luminance up to 10,000 nits, but there are no
-consumers displays capable of that. Even professional displays built for
+consumers displays capable of that. The BT 2020 color space is much larger than
+displays are currently capable of. Even professional displays built for
 movie-making are well short of that, currently around 4,000 nits. This is still
 much higher than current consumer displays, so the metadata can be used to
-further tone-map the content from the levels the film studio used to the
-capabilities of the individual display. In the future, when consumer monitors
-become more capable, the same films will look better as they require less
-tone-mapping and the original intent can be more accurately rendered.
+tone-map and gamut-map the content from the capabilities of fancy display the
+film studio used to the capabilities of the individual display. In the future,
+when consumer monitors become more capable, the same films will look better as
+they require less tone-mapping and the original intent can be more accurately
+rendered.
 
 ##### The Hybrid Log-Gamma
 
@@ -477,24 +478,25 @@ gamma transfer function, there is no metadata for tone-mapping.
 
 Once we've encoded the image with a transfer function the display supports, the
 bits are sent to the display via HDMI or DisplayPort. At this point, what
-happens next is up to whatever is on the other end of the cable. I have no
+happens next is up to whatever is on the other end of the cable. I have not
 pulled apart a display and learned what secrets it holds, but we can make some
 reasonable guesses without destroying anything:
 
-- If metadata is provided (PQ-encoded images only), the display examines it and
+1. If metadata is provided (PQ-encoded images only), the display examines it and
   determines of any tone-mapping is required due to the content exceeding its
-  capabilities.
+  capabilities. If it's not provided, it likely assumes the content spans the
+  entire range defined by PQ.
 
-- If the display includes light sensors to detect ambient light levels, it
+2. If the display includes light sensors to detect ambient light levels, it
   might decide to tone-map the content, even if it's capable of displaying all
   luminance levels encoded.
 
-- Displays tend to include configuration to alter the color and brightness. It
-  will take these into account when deciding if/how to tone-map or gamut-map
-  the content we gave it.
+3. Displays tend to include configuration to alter the color and brightness. It
+   will take these into account when deciding if/how to tone-map or gamut-map
+   the content we gave it.
 
-- Some gamut-mapping and tone-mapping will occur in the display depending on all
-  the above variables, at which point it will emit some light.
+4. Some gamut-mapping and tone-mapping will occur in the display depending on all
+   the above variables, at which point it will emit some light.
 
 Now, that's a very high-level overview of the process, but we can map these
 high-level steps to portions of the Linux desktop and discuss what needs to
@@ -503,10 +505,10 @@ change in order for us to support HDR.
 ## HDR In the Linux Desktop
 
 Now that we understand HDR - a larger luminance range that requires more bits
-per component, a new transfer function to encode that luminance, and
-potentially some metadata - we can examine the work required to use it in a
-"standard" Linux desktop. As we'll see, it's already partially usable in
-"non-standard" Linux environments.
+per component, new transfer functions to encode that luminance, and potentially
+some metadata - we can examine the work required to use it in a "standard"
+Linux desktop. As we'll see, it's already partially usable in "non-standard"
+Linux environments.
 
 To do this, we'll examine each portion of the stack, starting with the kernel
 and working our way up.
@@ -521,8 +523,9 @@ Let's review the high-level requirements:
 
 - We need to be able to express the transfer function, bit depth, color space,
   and, if the PQ transfer function is in use, the HDR metadata for our content
-  all the way from applications to the hardware transmitting to the display. This
-  tells us how content was encoded.
+  all the way from applications to the hardware transmitting to the display.
+  This is required to correctly blend, tone-map, or otherwise transform the
+  content. I refer to this as "content encoding".
 
 - Somewhere we need to make the application's content encoding match the output
   encoding, even when there are multiple applications on the screen, even when
@@ -531,7 +534,7 @@ Let's review the high-level requirements:
 
 If you have ever worked with text content, you're probably familiar with text
 encoding. Adding HDR support is very similar to adding support for Unicode when
-previously everything assumed content was encoded with ASCII.
+previously everything assumed content was encoded with ASCII (or Latin-1).
 
 ### The Kernel
 
@@ -552,6 +555,8 @@ display we're preparing content for. We need to know:
   Unfortunately, at the moment much of this information might not be available.
 
 - The minimum luminance.
+
+- What types of content encoded are allowed.
 
 - The types of HDR metadata it supports. These fall into two categories:
   static and dynamic. Static metadata applies to the entire piece of media,
@@ -649,17 +654,25 @@ color space to the destination color space. When combined with a de-gamma LUT
 and gamma LUT, it can be used to efficiently decode, transform, and re-encode
 content for a particular color space.
 
+Note that both `CTM` and the look-up tables apply to a CRTC, which is
+problematic if we wish to use the hardware to blend planes together that have
+different content encoding.
+
 ##### Blending with Planes
 
 It is possible to have hardware blend ("composite") images together using
 [planes](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#plane-composition-properties).
 
-However, the documentation does not mention using the GAMMA_LUT or DEGAMMA_LUT
-to blend the content using linear, optical values so it is not clear what
-impact this feature has on color correctness.
+However, the documentation does not mention using the `GAMMA_LUT` or
+`DEGAMMA_LUT` to blend the content using linear, optical values so it is not
+clear what impact this feature has on color correctness, even when the planes
+being blended are all the in same color space.
 
-More work *may* be required here to use this feature when correct colors are a
-concern.
+More work is required here to use this feature when correct colors are a
+concern. Harry Wentland from AMD recently started a [discussion on API changes
+for
+planes](https://lore.kernel.org/dri-devel/20210426173852.484368-1-harry.wentland@amd.com/)
+which looks to address these shortcomings.
 
 ##### HDR Metadata
 
@@ -673,7 +686,6 @@ which corresponds to the static HDR metadata required for the HDR10 standard.
 
 Other standards that use dynamic metadata rather than static metadata include
 HDR10+ and Dolby Vision. More work is required here to support these standards.
-
 
 ### Wayland
 
@@ -693,7 +705,7 @@ the content encoding is. We need the equivalent of the `Content-Type` header
 used in email or HTTP. Unfortunately, the core Wayland protocols do not include
 a way for clients to express how the content has been encoded. Instead, it is
 assumed to be sRGB. This is a bit like assuming all text content in the world
-is ASCII. Depending on where you are in the world it's usually "right", but
+is ASCII. Depending on where you are in the world it is often "right", but
 there's a bunch of text out there that is not encoded with ASCII and it becomes
 unreadable unless encoding is explicitly taken into account everywhere.
 
@@ -723,9 +735,14 @@ capabilities.
 
 ### Mesa
 
-[EGL](https://www.khronos.org/registry/EGL/sdk/docs/man/html/eglCreatePlatformWindowSurface.xhtml) and [Vulkan](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#_wsi_swapchain) both include the color space and transfer function associated
-with surfaces. Additionally, both include extensions for expressing luminance
-details:
+Clients render their content with Mesa, and this is where the Wayland protocol
+changes are implemented on the client side.
+
+[EGL](https://www.khronos.org/registry/EGL/sdk/docs/man/html/eglCreatePlatformWindowSurface.xhtml)
+and
+[Vulkan](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#_wsi_swapchain)
+both include the color space and transfer function associated with surfaces.
+Additionally, both include extensions for expressing luminance details:
 [EXT_surface_SMPTE2086_metadata](https://www.khronos.org/registry/EGL/extensions/EXT/EGL_EXT_surface_SMPTE2086_metadata.txt)
 and
 [vkSetHdrMetadataEXT](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#_hdr_metadata).
@@ -739,10 +756,9 @@ Ville Syrjälä created a proof-of-concept branch back in 2017 to do this, and I
 recently to "work" with the latest Wayland protocol proposal. It needs more
 polish and, of course, a compositor to do something with the information.
 
-### Client Frameworks
+## Summary
 
-Tools on top of Mesa to create the content.
-
-### Media Libraries
-
-ffmpeg/gstreamer/etc that deals with encoded media.
+In this post we covered what HDR is and how it maps into the lower levels of
+the userspace graphical stack. In a follow-up post, I plan on covering the work
+necessary in [Mutter](https://gitlab.gnome.org/GNOME/mutter) to support HDR, as
+well as the work being done in Weston, Wayland's reference compositor.
