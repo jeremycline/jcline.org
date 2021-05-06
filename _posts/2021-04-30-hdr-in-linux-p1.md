@@ -16,22 +16,26 @@ confusing, but may help me think through HDR better. The following content is
 likely wrong as I have no background in colorimetry, the human visual system,
 or graphics generally. I'd love to hear what makes no sense.
 
-## Background
+In this post I'll cover what HDR is and why we care about it. In the next post,
+I'll cover the work in specific projects that has been done to support it and
+what is left to be done.
+
+# Background
 
 Before attempting to understand dynamic range, I found it helpful to understand
-the go through the basics of electromagnetic radiation (light) and how the
-human visual system (eyes) interact with light so that we can produce graphics
-for human consumption.  With an understanding of how to do that, we can
-complete our ultimate goal of tricking the human visual system into seeing
-extremely realistic cats even if there are no cats around.
+the basics of electromagnetic radiation (light) and how the human visual system
+(eyes) interact with light so that we can produce graphics for human
+consumption. With an understanding of how to do that, we can complete our
+ultimate goal of tricking the human visual system into seeing extremely
+realistic images of cats even if there are no cats around.
 
-### Light
+## Light
 
-Human eyes detect a very small range of electromagnetic radiation. Light can be
-described as a wave with an amplitude and frequency/wavelength or a particle
-(photon) with a frequency/wavelength. More particles is equivalent to a higher
-amplitude wave. The range of wavelengths eyes typically see is approximately
-380 nanometers to 750 nanometers.
+Light can be described as a wave with an amplitude and frequency/wavelength or
+a particle (photon) with a frequency/wavelength. Human eyes detect a very small
+frequency range of electromagnetic radiation. More particles is equivalent to a
+higher amplitude wave. The range of wavelengths eyes typically see is
+approximately 380 nanometers to 750 nanometers.
 
 ![The visible light spectrum](/assets/visible_spectrum.png)
 
@@ -41,7 +45,7 @@ green in 525-560nm range, and red in the 630-700nm range.
 More photons of a given wavelength are perceived by humans as a brighter light
 of the color associated with the wavelength.
 
-### Luminance
+## Luminance
 
 [Luminance](https://en.wikipedia.org/wiki/Luminance) is the measure of the
 amount of light in the *visibile spectrum* that passes through an area.  The SI
@@ -56,14 +60,14 @@ example, the luminance of the sun's disk at noon is around 1,600,000,000 cd/m².
 This is much higher than the human eye can safely experience; do not go stare
 at the sun.
 
-One important fact is that the human perception of luminance is [roughly
+One important detail is that the human perception of luminance is [roughly
 logarithmic](https://en.wikipedia.org/wiki/Weber%E2%80%93Fechner_law). You
 might already be familiar with this as
 [decibels](https://en.wikipedia.org/wiki/Decibel) are used to describe sound
 levels. The fact that human sensitivity to luminance is non-linear becomes very
 important later when we need to compress data.
 
-### Human Visual System
+## Human Visual System
 
 The eye is composed of two general types of cells. The rod cells which are very
 sensitive and can detect very low amplitude (brightness) light waves, but don't
@@ -90,7 +94,7 @@ luminance levels, it cannot do so all at once. If you're outside on a sunny day
 and walk into a dark room, it takes some time for your eyes to adjust to the
 new luminance levels.
 
-### Color Spaces
+## Color Spaces
 
 When discussing displays and their capabilities you will hear about color
 spaces and perhaps see a diagram like this:
@@ -125,10 +129,16 @@ can describe the triangle by providing those coordinates. Using this approach,
 we can describe the colors a display can create by specifying three pairs of
 coordinates. This is the "color space".
 
-Note that this diagram does not include the luminance. Doing so creates a third
+If you're using GNOME, you can see a diagram of your display's color gamut by
+going to the "Color" settings section, selecting the color profile, and
+clicking view details:
+
+![GNOME Settings displaying a CIE 1931 chromaticity diagram](/assets/gnome-settings-cie-diagram.png)
+
+Note that these diagrams do not include the luminance. Doing so creates a third
 dimension and can be used to visualize a "color volume".
 
-### Displays
+## Displays
 
 There are several ways to display images for human consumption. One way is to
 reflect light off a surface that absorbs some frequencies of light and reflect
@@ -163,14 +173,13 @@ would need to be able to emit light in the range of 0.000001-1,600,000,000
 cd/m². However, as we've already established, the sun is not safe to look at so
 it would be best to not faithfully reproduce it on a display. Even if we
 restrict ourselves to the 0.000001-100,000,000 cd/m² range, the power
-requirements and heat produced would be astronomical. Additionally, the human
-eye cannot simultaneously detect the full range so our efforts at realism would
-be wasted. We have to attempt to represent the world using a smaller luminance
-range than we actually experience. In other words, we have to compress the
-luminance range of our world to fit the luminance range of the display. This
-process is often referred to as "tone-mapping".
+requirements and heat produced would be astronomical. We have to attempt to
+represent the world using a smaller luminance range than we actually
+experience. In other words, we have to compress the luminance range of our
+world to fit the luminance range of the display. This process is often referred
+to as "tone-mapping".
 
-### Dynamic Range
+## Dynamic Range
 
 Dynamic range is the ratio between the smallest value and largest value. When
 used in reference to displays, the value is luminance.
@@ -183,7 +192,8 @@ leaks through the display panel, and so on.
 The highest luminance level is determined by the light source of the display.
 This depends on the type of display, power usage requirements, user
 preferences, on the ambient temperature (emitting visible light also emits
-heat, and heat can damage things), and perhaps other factors I am not aware of.
+heat, and excessive heat can damage the display components), and perhaps other
+factors I am not aware of.
 
 As both these values depend on environmental factors the dynamic range of a
 display can change from moment to moment, which is something we may wish to
@@ -193,20 +203,21 @@ particular display.
 So what is a high dynamic range display? In short, a display that is
 simultaneously capable of lower luminance levels and higher luminance levels
 than previous "standard dynamic range" displays. What these levels are exactly
-can be hand-wavy, but [VESA provides some
+can be hand-wavy, but [VESA provides some clear
 specifications](https://displayhdr.org/performance-criteria/).
 
 This higher dynamic range ultimately means the way in which we compress the
 luminance range (tone-map) needs to change.
 
-## Light from Scene to Display
+# Light from Scene to Display
 
-In this section, we'll cover the journey of an image from its creation to its
-display. Perhaps the most self-contained example is a modern video games. This
-allows us to dodge the added complication of camera sensors, but the process
-for real-world image capture is similar.
+Now that we know the pieces of the puzzle, we can examine how an image ends up
+on our displays.  In this section, we'll cover the journey of an image from its
+creation to its display. Perhaps the most self-contained example is a modern
+video game. This allows us to dodge the added complication of camera sensors,
+but the process for real-world image capture is similar.
 
-### Scene-referred Lighting
+## Scene-referred Lighting
 
 Video games typically model a world complete with realistic lighting.  When
 they do this, they need to work with "real world" luminance levels. For
@@ -214,7 +225,8 @@ example, the sun that lights the scene may be modeled to be seen as 1.6 billion
 nits. Working with real world luminance that cannot be directly displayed is
 often called "scene-referred" luminance. We have to transform the
 scene-referred luminance levels to something we can display ("display-referred"
-luminance) by compressing or shifting the values to a displayable range.
+luminance) by compressing or shifting the luminance values to a displayable
+range.
 
 You might think it's best to leave content in scene-referred lighting levels
 until the last possible moment (when the display is setting the value for each
@@ -241,7 +253,7 @@ matches up with the way the human eye detects luminance levels, we can save a
 *lot* of bits. In fact, for the "standard" dynamic range, we can manage with
 only 8 bits (256 luminance levels) per color (24 bits total for RGB).
 
-### Tone-mapping
+## Tone-mapping
 
 In order to convert scene-referred, real world luminance to a range for our
 target display, we need to:
@@ -261,9 +273,10 @@ page publications on the subject), we'll just go over a couple examples to get
 the idea.
 
 An extremely silly, but technically valid tone-mapping algorithm would be `f(x)
-= 1`. This maps any input luminance level to 1.
+= 1`, where `x` is the input luminance. This maps any input luminance level to
+1.
 
-A more useful approach might be the function `f(x) = x^n/(x^n + s^n)` where `x`
+A more useful approach might be the function `f(x) = xⁿ/(xⁿ + sⁿ)` where `x`
 is the input luminance, `n` is a parameter changes the slope of the mapping
 curve, and `s` shifts the curve on the horizontal axis. As a somewhat random
 example, with `n = 3` and `s = 10`:
@@ -275,14 +288,18 @@ approaches the minimum and maximum values of 0 and 1. We can then map the [0,
 1] range to the display luminance range.
 
 There are many articles and papers out there dedicated to tone mapping. There's
-a chapter on the topic in "The high dynamic range imaging pipeline" by Gabriel
-Eilertsen, for example, which include a number of sample images and a much more
-thorough examination of the process than this blog post.
+a chapter on the topic in ["The high dynamic range imaging pipeline" by Gabriel
+Eilertsen](https://books.google.com/books?id=LCtbDwAAQBAJ), for example, which
+include a number of sample images and a much more thorough examination of the
+process than this blog post.
 
 This process is occasionally referred to as an "opti-optical transfer function"
 or "OOTF" as it maps optical (luminance) values to different optical values.
+Note that it is also possible to tone-map luminance values that are encoded for
+storage or transportation, so-called "electronic" values, which you might see
+referred to as electro-electronic transfer functions or "EETF"
 
-### Encoding
+## Encoding
 
 Once we've tone-mapped our content to use the display's luminance range, we
 need to send the content off to the display so that we can see it. As the
@@ -303,19 +320,23 @@ is `g(f(x)) = x`. This is called the "inverse transfer function",
 "electro-optical transfer function", or "EOTF" since it converts the
 "on-the-wire" values back to optical values.
 
-#### Encoding SDR
+Note that the terminology and definitions of these transfer functions can be
+confusing and vague. Some people appear to use OETF to mean both a tone-mapping
+operation and a transfer to electronic values.
+
+### Encoding SDR
 
 The "standard dynamic range" is not particularly standard, but usually tops out
 around 300 nits. Typically, 8 bits per RGB component is used. 8 bits allow us
 to express 256 luminance levels per component.
 
-##### The Naïve Approach
+#### The Naïve Approach
 
-One method would be to evenly spread each level across the luminance range.
-What would this look like? In our thought experiment, we'll assume the
-monitor's minimum luminance is 0.5 nits, and its maximum luminance is 200 nits.
-This gives us a range of 199.5 nits. Equally distributed, each step increases
-the luminance by about 0.78 nits.
+One method to encoding would be to evenly spread each level across the
+luminance range. What would this look like? In our thought experiment, we'll
+assume the monitor's minimum luminance is 0.5 nits, and its maximum luminance
+is 200 nits.  This gives us a range of 199.5 nits. Equally distributed, each
+step increases the luminance by about 0.78 nits.
 
 Sending [0, 0, 0] for red, green, and blue results in the minimum luminance of
 0.5 nits. Adding a step [1, 1, 1] would result in 1.28 nits.
@@ -339,9 +360,10 @@ resolution and framerate.
 Instead, we want to take these wasted levels at high luminances and use them in
 lower luminances.
 
-##### Gamma
+#### Gamma
 
-The "gamma" transfer function has a long and interesting history and is part of
+The "gamma" transfer function has a [long and interesting
+history](https://en.wikipedia.org/wiki/Cathode-ray_tube#Gamma) and is part of
 the [sRGB standard](https://en.wikipedia.org/wiki/SRGB). The sRGB version is
 actually a piecewise function which uses the gamma function for all but the
 very lowest luminance levels, but we can ignore that complication here.
@@ -396,15 +418,24 @@ range increases:
 Thus, for displays with a higher dynamic range, we may want to adjust the
 transfer function to get the most value out of each bit we spend.
 
-#### Encoding Higher Dynamic Ranges
+### Encoding Higher Dynamic Ranges
 
 As we saw when examining the gamma transfer function, it works reasonably
 well for low luminance ranges, but as the range increases it starts to be
 sub-optimal.
 
-There are two major approaches for higher dynamic range encoding.
+There are two major approaches for higher dynamic range encoding. Both have
+advantages and disadvantages, and displays can support either or both. If
+you're curious if your displays are capable of using either of these
+approaches, you can check by installing `edid-decode` and running:
 
-##### The Perceptual Quantizer
+`find /sys/devices -name edid -exec edid-decode {} \;`
+
+Look for a "HDR Static Metadata Data Block" and see what is included in the
+electro-optical transfer function list. This section will likely not be present
+if your display doesn't support HDR.
+
+#### The Perceptual Quantizer
 
 The [Perceptual Quantizer](https://en.wikipedia.org/wiki/Perceptual_Quantizer)
 (PQ) transfer function, sometimes referred to by the much less cool name "SMPTE
@@ -430,16 +461,15 @@ The function that describes this curve is more complicated than the gamma curve
 so I won't attempt to render it poorly here. The curious can consult the
 Wikipedia page linked above.
 
-The perceptual quantizer transfer function is paired with metadata describing
-the image or images it is used to encode. This metadata is usually the primary
-colors of the display used to create the content as well as luminance
-statistics like the image's minimum, maximum, and average luminance. This
-metadata allows consumers of the content to perform better tone-mapping and
-gamut-mapping since it describes the exact color volume of the content.
+The perceptual quantizer transfer function can be paired with metadata
+describing the image or images it is used to encode. This metadata is usually
+the primary colors of the display used to create the content as well as
+luminance statistics like the image's minimum, maximum, and average luminance.
+This metadata allows consumers of the content to perform better tone-mapping
+and gamut-mapping since it describes the exact color volume of the content.
 
 The PQ curve supports encoding luminance up to 10,000 nits, but there are no
-consumers displays capable of that. The BT 2020 color space is much larger than
-displays are currently capable of. Even professional displays built for
+consumers displays capable of that. Even professional displays built for
 movie-making are well short of that, currently around 4,000 nits. This is still
 much higher than current consumer displays, so the metadata can be used to
 tone-map and gamut-map the content from the capabilities of fancy display the
@@ -448,7 +478,7 @@ when consumer monitors become more capable, the same films will look better as
 they require less tone-mapping and the original intent can be more accurately
 rendered.
 
-##### The Hybrid Log-Gamma
+#### The Hybrid Log-Gamma
 
 As the name suggests, the second approach for higher dynamic range encoding is
 to use a hybrid of the gamma function and a log function. The [hybrid
@@ -474,7 +504,7 @@ used in favor of the log curve when encoding.
 As this encoding scheme is defined in terms of relative luminance like the
 gamma transfer function, there is no metadata for tone-mapping.
 
-### Transmission and Display
+## Transmission and Display
 
 Once we've encoded the image with a transfer function the display supports, the
 bits are sent to the display via HDMI or DisplayPort. At this point, what
@@ -488,277 +518,33 @@ reasonable guesses without destroying anything:
   entire range defined by PQ.
 
 2. If the display includes light sensors to detect ambient light levels, it
-  might decide to tone-map the content, even if it's capable of displaying all
-  luminance levels encoded.
+   *might* decide to tone-map the content, even if it's capable of displaying
+   all luminance levels encoded.
 
 3. Displays tend to include configuration to alter the color and brightness. It
    will take these into account when deciding if/how to tone-map or gamut-map
    the content we gave it.
 
-4. Some gamut-mapping and tone-mapping will occur in the display depending on all
-   the above variables, at which point it will emit some light.
+4. Some gamut-mapping and tone-mapping will occur in the display depending on
+   all the above variables, at which point it will emit some light.
 
 Now, that's a very high-level overview of the process, but we can map these
 high-level steps to portions of the Linux desktop and discuss what needs to
 change in order for us to support HDR.
 
-## HDR In the Linux Desktop
+# Summary
 
-Now that we understand HDR - a larger luminance range that requires more bits
-per component, new transfer functions to encode that luminance, and potentially
-some metadata - we can examine the work required to use it in a "standard"
-Linux desktop. As we'll see, it's already partially usable in "non-standard"
-Linux environments.
+Now that we understand (in theory) HDR, it's worth asking what all this is good
+for.
 
-To do this, we'll examine each portion of the stack, starting with the kernel
-and working our way up.
+If, as part of your movie-watching experience, you want an eye-wateringly
+bright sunset where you can still make out the blades of grass in the shadow of
+a rock this is an important feature. The more cinematic video games could look
+even better. These are the most obvious applications, and where many users will
+encounter HDR, but it's not necessarily limited to entertainment. HDR is all
+about transmitting and displaying more information, so any process that
+involves visualization could benefit from more luminance levels.
 
-Let's review the high-level requirements:
-
-- We need to be able to determine what output formats the display or displays
-  we're targeting are capable of. This includes the color primaries of the
-  display, the luminance capabilities, what transfer functions the display can
-  decode, and how many bits per component are permitted. This allows us to
-  determine what output encoding to use.
-
-- We need to be able to express the transfer function, bit depth, color space,
-  and, if the PQ transfer function is in use, the HDR metadata for our content
-  all the way from applications to the hardware transmitting to the display.
-  This is required to correctly blend, tone-map, or otherwise transform the
-  content. I refer to this as "content encoding".
-
-- Somewhere we need to make the application's content encoding match the output
-  encoding, even when there are multiple applications on the screen, even when
-  they overlap, even when they are partially transparent and need to be blended
-  together.
-
-If you have ever worked with text content, you're probably familiar with text
-encoding. Adding HDR support is very similar to adding support for Unicode when
-previously everything assumed content was encoded with ASCII (or Latin-1).
-
-### The Kernel
-
-Since the kernel deals with talking to hardware, it's the first stop in making
-all this work. Fortunately, a good deal of work has already been done in the
-kernel.
-
-#### Display Capabilities
-
-The first thing we need to be able to do is determine the capabilities of the
-display we're preparing content for. We need to know:
-
-- The exactly color of each primary on the display (chromaticity coordinates).
-
-- The maximum luminance. Ideally this would include the peak luminance, what
-  percentage of the screen can achieve peak luminance at once, the maximum
-  luminance that can be sustained on the entire display, and so on.
-  Unfortunately, at the moment much of this information might not be available.
-
-- The minimum luminance.
-
-- What types of content encoded are allowed.
-
-- The types of HDR metadata it supports. These fall into two categories:
-  static and dynamic. Static metadata applies to the entire piece of media,
-  whereas dynamic metadata can change from scene to scene or even frame to
-  frame. There are several metadata formats, so we need to know which formats
-  we can use.
-
-##### EDID
-
-Some of the display capabilities are listed in the
-[EDID](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data). The
-EDID structure is made available to userspace by the kernel in the [EDID
-connector
-property](https://www.kernel.org/doc/html/latest/gpu/drm-kms.html#standard-connector-properties).
-
-The base EDID specification is [available
-online](https://vesa.org/vesa-standards/). The format describes the display
-chromaticity coordinates, but has no details on luminance. For that, we'll need
-to look to an extension block, which the base EDID specification describes how
-to parse.
-
-The CEA-861 specification describes an EDID extension that includes the HDR
-metadata the display supports, as well as the minimum, maximum, and average
-luminance levels the display wishes (if any). This structure is parsed in [the
-kernel](https://elixir.bootlin.com/linux/v5.11/source/drivers/gpu/drm/drm_edid.c).
-This gives us an idea of the structure format even if we don't have access to
-the specification itself.
-
-One unfortunate thing about EDID is that very few fields are required, so we
-can't be sure that we'll find all the details we need. This is true of most
-things in life, though, so we'll just have to do our best if the EDID is all we
-have.
-
-##### DisplayID
-
-[DisplayID](https://en.wikipedia.org/wiki/DisplayID) is meant to replace EDID.
-The latest revision, 2.0, was released in 2017 and its structure is inspired by
-the CEA-861 EDID extension. It has many more required fields, including a block
-on [display
-parameters](https://en.wikipedia.org/wiki/DisplayID#0x21_Display_Parameters)
-that includes:
-
-- Chromaticity coordinates
-
-- Maximum luminance (full display coverage)
-
-- Maximum luminance (10% display coverage)
-
-- Minimum luminance
-
-- Color depth (bits per component)
-
-- Display technology (OLED, LCD, etc)
-
-The [display
-interface](https://en.wikipedia.org/wiki/DisplayID#0x26_Display_interface_features)
-section, also required, covers supported color space and transfer functions.
-
-At this time, the DisplayID of a display is not exposed to userspace. It will
-be nice to have, but we will also have to live with the EDID for quite some
-time when the display doesn't offer a DisplayID table.
-
-#### Content Encoding, Metadata, and Accelerated Operations
-
-Graphics hardware typically provides hardware dedicated to efficiently decode,
-transform, and encode images with look-up tables (LUTs). These look-up tables
-approximate the smooth curve of the desired transfer function by mapping
-encoded values to optical values (de-gamma LUT) and optical values to encoded
-values (gamma LUT). Transformations could include color space conversions
-(CSC), blending images together into a single image for the display, and so on.
-
-The existence of these features and the number of look-up table entries is
-hardware-dependent, but we would like to use them when they are there and
-provide enough accuracy for the transfer function rather than calculating the
-values using, say, expensive CPU or general purpose graphics shaders cycles.
-
-##### Encoding and Decoding
-
-The hardware-backed look-up tables for encoding and decoding content with an
-arbitrary transfer function are exposed to userspace as properties attached to
-CRTC objects and are documented in the [color
-management](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#color-management-properties)
-section of the KMS interface.
-
-The `GAMMA_LUT` and `DEGAMMA_LUT` properties and their respective lengths allow
-us to approximate the smooth curves we saw in the section on transfer functions.
-
-##### Color Space Conversions
-
-The documentation for [color
-management](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#color-management-properties)
-interfaces also mentions the `CTM` property. The `CTM` property lets userspace
-define a color transformation matrix to describe how to map from the source
-color space to the destination color space. When combined with a de-gamma LUT
-and gamma LUT, it can be used to efficiently decode, transform, and re-encode
-content for a particular color space.
-
-Note that both `CTM` and the look-up tables apply to a CRTC, which is
-problematic if we wish to use the hardware to blend planes together that have
-different content encoding.
-
-##### Blending with Planes
-
-It is possible to have hardware blend ("composite") images together using
-[planes](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#plane-composition-properties).
-
-However, the documentation does not mention using the `GAMMA_LUT` or
-`DEGAMMA_LUT` to blend the content using linear, optical values so it is not
-clear what impact this feature has on color correctness, even when the planes
-being blended are all the in same color space.
-
-More work is required here to use this feature when correct colors are a
-concern. Harry Wentland from AMD recently started a [discussion on API changes
-for
-planes](https://lore.kernel.org/dri-devel/20210426173852.484368-1-harry.wentland@amd.com/)
-which looks to address these shortcomings.
-
-##### HDR Metadata
-
-The kernel exposes a `HDR_OUTPUT_METADATA` [connector
-property](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#standard-connector-properties)
-that userspace can use to send HDR metadata to the kernel and thus to the display.
-
-At this time there is only one [supported metadata
-type](https://www.kernel.org/doc/html/v5.11/gpu/drm-uapi.html#c.hdr_output_metadata),
-which corresponds to the static HDR metadata required for the HDR10 standard.
-
-Other standards that use dynamic metadata rather than static metadata include
-HDR10+ and Dolby Vision. More work is required here to support these standards.
-
-### Wayland
-
-Graphical applications like Firefox have a client-server relationship with a
-Wayland compositor. The compositor services requests of client applications and
-handles the interactions between the kernel and userspace. The interfaces
-discussed in the section on the kernel are used by the Wayland compositor.
-
-The compositor is in control of which applications receive inputs like keyboard
-strokes and how the various applications are composed into a single image.
-However, it is not creating the content that fills that image. The graphical
-applications create the content, and are therefore in control of what color
-space is used and how the content is encoded.
-
-There needs to be a way for the client application to tell the compositor what
-the content encoding is. We need the equivalent of the `Content-Type` header
-used in email or HTTP. Unfortunately, the core Wayland protocols do not include
-a way for clients to express how the content has been encoded. Instead, it is
-assumed to be sRGB. This is a bit like assuming all text content in the world
-is ASCII. Depending on where you are in the world it is often "right", but
-there's a bunch of text out there that is not encoded with ASCII and it becomes
-unreadable unless encoding is explicitly taken into account everywhere.
-
-Fortunately, Wayland allows us to define extensions to the protocol. There has
-been a [work-in-progress merge
-request](https://gitlab.freedesktop.org/wayland/wayland-protocols/-/merge_requests/14)
-to do just that. Regardless of the final form this protocol takes, we can
-expect that it will provide clients with a way to express:
-
-- The color space of the data.
-- The transfer function applied applied to the data.
-- The luminance range of the data, if applicable (HDR metadata).
-
-Additionally, it may include a way to explicitly express whether or not it
-intends to tone-map the content. Some applications, like video games or media
-creation applications like Blender, will want to handle tone-mapping content
-for the display themselves. Other applications will just want the application
-to match the brightness of desktop generally and leave the compositor to handle
-that. Finally, some applications like media players may be able to provide
-content that is not tone-mapped for the display, but includes the HDR metadata
-necessary for the display to handle tone-mapping itself.
-
-For a client to tone-map and gamut-map its content for a display, it needs to
-know what the display capabilities are, so the Wayland protocol extension also
-needs to provide a way for the compositor to inform clients of those
-capabilities.
-
-### Mesa
-
-Clients render their content with Mesa, and this is where the Wayland protocol
-changes are implemented on the client side.
-
-[EGL](https://www.khronos.org/registry/EGL/sdk/docs/man/html/eglCreatePlatformWindowSurface.xhtml)
-and
-[Vulkan](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#_wsi_swapchain)
-both include the color space and transfer function associated with surfaces.
-Additionally, both include extensions for expressing luminance details:
-[EXT_surface_SMPTE2086_metadata](https://www.khronos.org/registry/EGL/extensions/EXT/EGL_EXT_surface_SMPTE2086_metadata.txt)
-and
-[vkSetHdrMetadataEXT](https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#_hdr_metadata).
-
-These functions just need to map the EGL and Vulkan color space definitions to
-Wayland definitions and send the data along to the Wayland compositor using the
-protocol decided upon when called.
-
-Ville Syrjälä created a proof-of-concept branch back in 2017 to do this, and I
-[rebased it](https://gitlab.freedesktop.org/jcline/mesa/-/tree/hdr_poc)
-recently to "work" with the latest Wayland protocol proposal. It needs more
-polish and, of course, a compositor to do something with the information.
-
-## Summary
-
-In this post we covered what HDR is and how it maps into the lower levels of
-the userspace graphical stack. In a follow-up post, I plan on covering the work
-necessary in [Mutter](https://gitlab.gnome.org/GNOME/mutter) to support HDR, as
-well as the work being done in Weston, Wayland's reference compositor.
+As we'll see in the next post, however, there is a good bit of work left to be
+done before you can, for example, enjoy an HDR film in GNOME's Videos
+application.
