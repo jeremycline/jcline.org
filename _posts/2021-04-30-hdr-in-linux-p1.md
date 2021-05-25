@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "HDR in Linux: Part 1"
-date:   2021-04-30 15:05:08 -0400
+date:   2021-05-07 11:55:08 -0400
 categories: blog fedora graphics hdr
 ---
 
