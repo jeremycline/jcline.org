@@ -172,10 +172,10 @@ to the Wayland compositor because there's no protocol.
 Ville Syrjälä created a proof-of-concept branch of Mesa back in 2017 to have
 Mesa use the Wayland protocol proposal (of the time), and I [rebased
 it](https://gitlab.freedesktop.org/jcline/mesa/-/tree/hdr_poc) recently to
-"work" with the latest Wayland protocol proposal. It probably doesn't work, but
-it is a good approximation of the work required, which is just implementing the
-standard's functions to call libwayland functions with the content encoding
-details.
+"work" with the latest Wayland protocol proposal. It probably doesn't
+*actually* work, but it is a good approximation of the work required, which is
+implementing the standard's functions to call libwayland functions with the
+content encoding details.
 
 ## The Wayland Protocol
 
@@ -235,164 +235,231 @@ of:
 * HDR metadata formats the display will accept.
 
 In the case of Totem playing an HDR movie, it would not need to concern itself
-with tone-mapping and would not need to know the details listed above. However,
-something like a video that generates content would benefit from targeting the
-display's capabilities.
+with tone-mapping and would not need to know about what displays it might be
+targeting. However, something like a video that generates content would benefit
+from targeting the display's capabilities.
 
 ## Mutter
 
 [Mutter](https://gitlab.gnome.org/GNOME/mutter) is, among other things, a
-Wayland display server.
+Wayland display server. Once a protocol is in place, Mutter needs to implement
+it. To support HDR, Mutter needs to be able to:
 
-TODO: outline mutter work.
+* Inform clients of display capabilities
+
+* Act upon the content encoding provided by the clients to correctly convert
+  all content to the same encoding and blend them all together into the desktop
+  we know and love.
+
+To inform clients of the display capabilities, Mutter can use the Extended
+Display Identification Data (EDID) from the kernel, which contains the display
+color primaries, supported HDR formats, and so on. It will be covered in detail
+in the kernel section below. The EDID is, in fact, already being used in Mutter
+so this will be a small addition to that.
+
+To act upon the client-provided content encoding, however, requires a bit more
+work.
+
+### Consolidating Existing Color Management
+
+GNOME already has some color management capabilities. At the moment, they are
+split up in gnome-settings-daemon, colord, and Mutter.
+
+[colord](https://github.com/hughsie/colord/) is a system service that maintains
+a database of devices, color profiles, and the association between the two
+(including things like the default profile). At the moment, however,
+gnome-settings-daemon is responsible for querying colord and sets up the
+profile by calling Mutter D-Bus APIs.
+
+Mutter needs to be aware of each display's color profile in order transform the
+client content if necessary. The existing API for setting color profiles is
+also difficult to use because it acts on CRTC objects rather than displays,
+which can be backed by several CRTCs in certain scenarios. It makes more sense
+for Mutter to query colord itself rather than having gnome-settings-daemon do
+it. gnome-settings-daemon also handles the Night Light feature, which adjusts
+the color profile to shift the white point towards red to remove the blue
+light. Mutter needs to either handle the Night Light feature or, preferably,
+provide a "temperature" API and allow Mutter users to control when and how much
+to adjust the color temperature.
+
+### Support Converting Buffer Formats
+
+TODO YUV Support. Also TODO Why does it even work now? What happens to YUV
+buffers?
+
+### Composite in a Single Color Space
+
+TODO Ensure all buffers are converted to a single color space and probably
+linear (optical) luminance values (how does it even work now?)
+
+### Tone-mapping
+
+TODO Tone-mapping, mixing HDR and SDR
 
 ## The Kernel
 
-Since the kernel deals with talking to hardware, it's the first stop in making
-all this work. Fortunately, a good deal of work has already been done in the
+We have arrived at the kernel, the final stop in this journey down the stack.
+The good news is that the basic requirements for HDR have already been met.
+We'll touch on those and then look at additional features necessary for us to
+use certain hardware features.
+
+### The Bare Minimum
+
+These are the bare minimum features for HDR and are already present in the
 kernel.
 
-### Display Capabilities
+#### Display Capabilities
 
-The first thing we need to be able to do is determine the capabilities of the
-display we're preparing content for. We need to know:
-
-- The exactly color of each primary on the display (chromaticity coordinates).
-
-- The maximum luminance. Ideally this would include the peak luminance, what
-  percentage of the screen can achieve peak luminance at once, the maximum
-  luminance that can be sustained on the entire display, and so on.
-  Unfortunately, at the moment much of this information might not be available.
-
-- The minimum luminance.
-
-- What types of content encoded are allowed.
-
-- The types of HDR metadata it supports. These fall into two categories:
-  static and dynamic. Static metadata applies to the entire piece of media,
-  whereas dynamic metadata can change from scene to scene or even frame to
-  frame. There are several metadata formats, so we need to know which formats
-  we can use.
-
-#### EDID
-
-Some of the display capabilities are listed in the
-[EDID](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data). The
-EDID structure is made available to userspace by the kernel in the [EDID
+As we noted in the Mutter section, the
+[EDID](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data)
+structure provided by a display is already available to userspace via the [EDID
 connector
 property](https://www.kernel.org/doc/html/latest/gpu/drm-kms.html#standard-connector-properties).
+Userspace can parse it for the chromaticity coordinates of the display
+primaries, the luminance, supported color spaces, and supported transfer
+functions. At the moment, many different projects implement parsing the EDID
+structure, but there have been some [requests for a
+library](https://lists.x.org/archives/xorg-devel/2021-April/058690.html) to do
+so.
 
-The base EDID specification is [available
-online](https://vesa.org/vesa-standards/). The format describes the display
-chromaticity coordinates, but has no details on luminance. For that, we'll need
-to look to an extension block, which the base EDID specification describes how
-to parse.
+One thing worth noting is that EDID is quite old and has a replacement
+standard, DisplayID. Both standards are available from
+[VESA](https://vesa.org/vesa-standards/) for free, although you do need to
+provide your name and email address to access them. DisplayID has a [Display
+Parameters](https://en.wikipedia.org/wiki/DisplayID#0x21_Display_Parameters)
+block that includes luminance and chromaticity values, and the [Display
+Interface
+Features](https://en.wikipedia.org/wiki/DisplayID#0x26_Display_interface_features)
+block contains supported color space and transfer function combinations as well
+as bit depths. EDID included much of this information, but only as an extension
+documented in CTA-861 (currently at revision G). Recently CTA made this
+[available for
+free](https://shop.cta.tech/products/a-dtv-profile-for-uncompressed-high-speed-digital-interfaces-cta-861-g),
+although you must provide an email and billing address to download it.
 
-The CEA-861 specification describes an EDID extension that includes the HDR
-metadata the display supports, as well as the minimum, maximum, and average
-luminance levels the display wishes (if any). This structure is parsed in [the
-kernel](https://elixir.bootlin.com/linux/v5.11/source/drivers/gpu/drm/drm_edid.c).
-This gives us an idea of the structure format even if we don't have access to
-the specification itself.
+Displays can provide an EDID, DisplayID, or both. For the curious, the VESA
+E-DCC standard documents how these structures are accessed over
+[I²C](https://en.wikipedia.org/wiki/I%C2%B2C). How I²C is sent over, for
+example, DisplayPort is documented within the DisplayPort specification, which
+is only available to VESA members so the very curious will have to resort to
+reading the [Linux kernel's
+implementation](https://elixir.bootlin.com/linux/v5.12/source/drivers/gpu/drm/drm_dp_helper.c#L226)
+if they aren't members.
 
-One unfortunate thing about EDID is that very few fields are required, so we
-can't be sure that we'll find all the details we need. This is true of most
-things in life, though, so we'll just have to do our best if the EDID is all we
-have.
-
-#### DisplayID
-
-[DisplayID](https://en.wikipedia.org/wiki/DisplayID) is meant to replace EDID.
-The latest revision, 2.0, was released in 2017 and its structure is inspired by
-the CEA-861 EDID extension. It has many more required fields, including a block
-on [display
-parameters](https://en.wikipedia.org/wiki/DisplayID#0x21_Display_Parameters)
-that includes:
-
-- Chromaticity coordinates
-
-- Maximum luminance (full display coverage)
-
-- Maximum luminance (10% display coverage)
-
-- Minimum luminance
-
-- Color depth (bits per component)
-
-- Display technology (OLED, LCD, etc)
-
-The [display
-interface](https://en.wikipedia.org/wiki/DisplayID#0x26_Display_interface_features)
-section, also required, covers supported color space and transfer functions.
-
-At this time, the DisplayID of a display is not exposed to userspace. It will
-be nice to have, but we will also have to live with the EDID for quite some
-time when the display doesn't offer a DisplayID table.
-
-### Content Encoding, Metadata, and Accelerated Operations
-
-Graphics hardware typically provides hardware dedicated to efficiently decode,
-transform, and encode images with look-up tables (LUTs). These look-up tables
-approximate the smooth curve of the desired transfer function by mapping
-encoded values to optical values (de-gamma LUT) and optical values to encoded
-values (gamma LUT). Transformations could include color space conversions
-(CSC), blending images together into a single image for the display, and so on.
-
-The existence of these features and the number of look-up table entries is
-hardware-dependent, but we would like to use them when they are there and
-provide enough accuracy for the transfer function rather than calculating the
-values using, say, expensive CPU or general purpose graphics shaders cycles.
-
-#### Encoding and Decoding
-
-The hardware-backed look-up tables for encoding and decoding content with an
-arbitrary transfer function are exposed to userspace as properties attached to
-CRTC objects and are documented in the [color
-management](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#color-management-properties)
-section of the KMS interface.
-
-The `GAMMA_LUT` and `DEGAMMA_LUT` properties and their respective lengths allow
-us to approximate the smooth curves we saw in the section on transfer functions.
-
-#### Color Space Conversions
-
-The documentation for [color
-management](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#color-management-properties)
-interfaces also mentions the `CTM` property. The `CTM` property lets userspace
-define a color transformation matrix to describe how to map from the source
-color space to the destination color space. When combined with a de-gamma LUT
-and gamma LUT, it can be used to efficiently decode, transform, and re-encode
-content for a particular color space.
-
-Note that both `CTM` and the look-up tables apply to a CRTC, which is
-problematic if we wish to use the hardware to blend planes together that have
-different content encoding.
-
-#### Blending with Planes
-
-It is possible to have hardware blend ("composite") images together using
-[planes](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#plane-composition-properties).
-
-However, the documentation does not mention using the `GAMMA_LUT` or
-`DEGAMMA_LUT` to blend the content using linear, optical values so it is not
-clear what impact this feature has on color correctness, even when the planes
-being blended are all the in same color space.
-
-More work is required here to use this feature when correct colors are a
-concern. Harry Wentland from AMD recently started a [discussion on API changes
-for
-planes](https://lore.kernel.org/dri-devel/20210426173852.484368-1-harry.wentland@amd.com/)
-which looks to address these shortcomings.
+DisplayID can be embedded in the EDID structure as an extension so it may be
+available to userspace via the existing EDID connector property, but at this
+time there is not a dedicated kernel interface to retrieve a standalone
+DisplayID structure that I am aware of. The work to add one would be minimal,
+however, since it's extremely similar to the EDID.
 
 #### HDR Metadata
 
 The kernel exposes a `HDR_OUTPUT_METADATA` [connector
-property](https://www.kernel.org/doc/html/v5.11/gpu/drm-kms.html#standard-connector-properties)
+property](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#standard-connector-properties)
 that userspace can use to send HDR metadata to the kernel and thus to the display.
 
 At this time there is only one [supported metadata
-type](https://www.kernel.org/doc/html/v5.11/gpu/drm-uapi.html#c.hdr_output_metadata),
-which corresponds to the static HDR metadata required for the HDR10 standard.
+type](https://www.kernel.org/doc/html/v5.12/gpu/drm-uapi.html#c.hdr_output_metadata),
+which corresponds to the HDR metadata defined in CTA-861 in section 6.9
+"Dynamic Range and Mastering InfoFrame". This *should* be all that is required
+for HDR10 and HDR10+ content.
 
-Other standards that use dynamic metadata rather than static metadata include
-HDR10+ and Dolby Vision. More work is required here to support these standards.
+#### Bits Per Component
+
+The ``max bpc`` standard connector property is a [range
+property](https://www.kernel.org/doc/html/latest/gpu/drm-kms.html#property-types-and-blob-property-support)
+that allows the hardware driver to indicate valid bits per color component.
+Userspace can set this property so long as it is within the driver-provided
+range to control the output bit depth.
+
+### Nice-to-have Features
+
+The bare minimum feature set is present for HDR content and allows us to query
+display capabilities, pass HDR metadata on to the display, and configure the
+bits-per-component sent to the display.
+
+This leaves userspace to handle color space transformations, applying the
+transfer function's inverse to get linear light values, blending, and
+re-encoding the results with a (perhaps different) transfer function. All that
+is possible, of course, but there are a number of hardware features for all
+those operations and it would be great to use them when they are there rather
+than performing the operations using expensive CPU or general purpose graphics
+shaders cycles.
+
+#### Planes
+
+Before we cover the encoding, decoding, color space transformations, and so on,
+it's important to become familiar with
+[planes](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#plane-abstraction).
+Planes hold images and descriptions of how those images should be blended into
+the final output image. These are analogous to a Wayland surface, which
+contains a buffer with the image data and metadata for the image.
+
+Planes describe how they should be cropped, scaled, rotated, and blended with
+other planes to compose the final image sent to the display. These planes are
+backed by dedicated hardware that can efficiently do those operations. For the
+curious, the [display
+engine](https://01.org/sites/default/files/documentation/intel-gfx-prm-osrc-dg1-vol12-displayengine.pdf)
+section of Intel's documentation describes some of the hardware plane's
+capabilities. Of particular interest is the diagram around page 258 which
+illustrates the plane pipeline.
+
+One or more planes are used to compose the image the
+[CRTC](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#crtc-abstraction),
+scans out to the display.
+
+#### Decoding, Color Space Transformations, Blending, and Encoding
+
+Graphics hardware typically provides hardware dedicated to efficiently decode,
+transform, and re-encode images. Encoding are decoding are done with look-up
+tables that approximate the smooth curve of the desired transfer function by
+mapping encoded values to optical values and optical values to encoded values.
+For historical reasons, these are referred to as the de-gamma and gamma LUTs
+respectively.
+
+The hardware-backed look-up tables for encoding and decoding content with an
+arbitrary transfer function are exposed to userspace as properties attached to
+CRTC objects and are also documented in the [color
+management](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#color-management-properties)
+section of the KMS interface. The `GAMMA_LUT` and `DEGAMMA_LUT` properties and
+their respective lengths allow us to set arbitrary transfer function
+approximations. The number of look-up table entries is hardware-dependent so it
+may not be appropriate to use them in all cases.
+
+Color space transformations are applied by using the `CTM` (colorspace
+transformation matrix) property defined in the [color
+management](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#color-management-properties)
+interface. The `CTM` property lets userspace define a color transformation
+matrix to describe how to map from the source color space to the destination
+color space. When combined with a de-gamma LUT and gamma LUT, it can be used to
+efficiently decode, transform, and re-encode content for a particular color
+space.
+
+Finally, the aforementioned planes include [composition
+properties](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#plane-composition-properties)
+that allow userspace to control how planes are blended together.
+
+*However*, these APIs have a few problems. The color management properties are
+attached to the CRTC, which is intended to abstract the display pipeline and is
+made up of planes. If the planes that make up the CRTC do not all have the same
+transfer function applied to them or use different color spaces, there is no
+way to express that each plane needs its own look-up table or color
+transformation matrix.
+
+While it used to be reasonably safe to assume all the planes were the same
+(e.g. sRGB), with HDR this is no longer the case. There are likely going to be
+HDR planes and SDR planes that need to be blended together, so there needs to
+be a way to express the color management properties - the content encoding - on
+a plane-by-plane basis. In addition to the content encoding of each plane, we
+need to be able to express *how* HDR and SDR content should be blended. In the
+case of PQ-encoded HDR content, it is expressed in absolute luminance up to
+10,000 nits. Userspace needs to express how the SDR luminance range maps into
+the HDR luminance range so the SDR encoding can be converted into HDR encoding.
+
+Harry Wentland from AMD recently started a [discussion on API changes for
+planes](https://lore.kernel.org/dri-devel/20210426173852.484368-1-harry.wentland@amd.com/)
+which looks to address these shortcomings.
+
+## Summary
+
+TODO summarize the TODOs
