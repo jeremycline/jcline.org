@@ -56,8 +56,9 @@ examine.
 
 # GStreamer
 
-Based on the GStreamer documentation all the necessary features appear to
-already be implemented for HDR video playback.
+Based on the GStreamer documentation and [this talk by Edward
+Hervey](https://gstconf.ubicast.tv/videos/hdr-seeing-the-world-as-it-is/) all
+the necessary features appear to already be implemented for HDR video playback.
 
 The [GStreamer video
 library](https://gstreamer.freedesktop.org/documentation/video/index.html)
@@ -117,8 +118,9 @@ fields, etc), and other useful utilities for building a graphical user
 interface.
 
 As of GTK 4, rendering is usually performed by OpenGL. As we'll examine later,
-OpenGL APIs offer the necessary interfaces to handle HDR content, but GTK's rendering model introduces a few issues. To understand the difficulties we need to understand how GTK builds the
-application window.
+OpenGL APIs offer the necessary interfaces to handle HDR content, but GTK's
+rendering model introduces a few issues. To understand the difficulties we need
+to understand how GTK builds the application window.
 
 ## A Window into GTK
 
@@ -133,26 +135,30 @@ One of the most relevant parts of the documentation is that
 
 GTK has each widget render itself, and then combines them all into a single
 surface which it shares with the Wayland display server to be combined with all
-the other client surfaces. We'll examine the Wayland protocol in detail later,
+the other client surfaces. We'll look at the Wayland protocol in detail later,
 but what's important to know right now is that the surface is where the content
 encoding should be stored.
 
-This single surface, therefore, needs to have the same content encoding. This
-is the exact same problem that the Wayland display server itself faces when
-combining all the client surfaces into a single image for the display.
-
-Unfortunately, GTK does not offer a way for each widget to communicate how the
-content they produce is encoded. All content GTK produces on the application's
-behalf, like buttons, menus, the window decorations, and so on, are rendered in
-an undefined color space with an undefined transfer function. In practice, this
-seems to be sRGB. All textures GTK creates are hard-coded to use 8 bits per
+This single surface that GTK produces, therefore, needs to be composed of
+widgets that all use the same content encoding. Unfortunately, GTK does not
+offer a way specify what content encoding to use for widgets it renders, nor
+does it provide a way for users to convey the content encoding *they* are using
+for their custom widgets. All content GTK produces on the application's behalf,
+like buttons, menus, the window decorations, and so on, are rendered in an
+undefined color space with an undefined transfer function. In practice, this
+seems to be sRGB.  All textures GTK creates are hard-coded to use 8 bits per
 component, including when it combines all the widgets into a single image.
+
+This means, unfortunately, that at the moment there is no way to use GTK for an
+application interested in producing HDR content (video players, image viewers,
+content creation tools, etc).
 
 ## Ways Forward
 
 There are a few ways for GTK to work in a world where sRGB isn't the only
 content. I can't really say which approach is best, or even if this is an
 exhaustive list of options since my knowledge of GTK is only a few days old.
+Regardless, a good bit of work is necessary to make GTK HDR-ready.
 
 ### Widgets with Content Encoding
 
@@ -162,39 +168,34 @@ produces is encoded. GTK can then use this to ensure they are combined
 correctly. If, for example, sRGB content and PQ-encoded content were combined
 into a destination image without converting the sRGB content, the end result
 would be that the sRGB portions of the image would be extremely dark. This, of
-course, introduces a reasonably large amount of complexity to GTK which is also
-present in the Wayland display server.
+course, introduces a reasonable amount of complexity to GTK as it needs to
+convert between a potentially long list of formats in addition to introducing
+interfaces for specifying the content encoding everywhere it matters.
 
 ### Sub-surfaces
 
 Wayland offers a way to create surfaces with a parent-child relationship called
 [subsurfaces](https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_subsurface).
 Since the surface is where the content encoding is stored, GTK could use
-sub-surfaces to defer the blending of different content encoding to  the
-Wayland display server. However, I am told these are problematic as they cannot
-be clipped or transformed by GTK.
+sub-surfaces to defer the blending of different content encoding to the Wayland
+display server. This would allow GTK to remain in its undefined, sRGB-ish world
+while allowing applications to handle modern content with other content
+encoding. However, I am told these are problematic as they cannot be clipped or
+transformed by GTK.
 
+### Require a single HDR Format
 
-### scRGB
+Rather than handling converting all the widgets to the same content encoding,
+GTK could specify *one* HDR-capable format it supports and require all widgets
+to use that if HDR has been requested for the application. A format like scRGB
+with half-precision 16-bit floating point numbers for each color component.
+This, however, has the downside that all HDR content needs to be converted from
+its native format to scRGB, blended with the other GTK widgets, and then
+converted back to some on-the-wire HDR format in the Wayland display server.
 
-I don't have access to the specification for scRGB, but it has been brought up
-as an option. Given that I cannot read the specification, it's possible I do
-not understand scRGB correctly.
-
-In any case, one proposal is that rather than allow the application to inform
-GTK what sort of content encoding it is using, GTK could simply allow the
-application a choice between HDR and SDR. When HDR is selected, GTK would use
-16 bit floats for each component and expect the content to be scRGB. In scRGB,
-sRGB maps into the range 0-1, but scRGB allows for negative numbers and numbers
-greater than 1. This allows it to support both a wider color gamut than sRGB
-and higher dynamic range. It would be the responsibility of the Wayland display
-server to convert it to the final on-the-wire format.
-
-One problem with this approach is that it requires clients with pre-made HDR
-content, like a movie, to decode it to scRGB, which is a potentially lossy
-operation since formats like HDR10 use absolute luminance ranges and scRGB
-doesn't (from what I understand). It would then be passed on to the compositor
-which re-encodes it and sends it off to the display.
+Even with this approach, GTK cannot blend the SDR content into HDR content
+without considering what luminance range to map SDR content to, which needs to
+correspond to the display brightness level the user has set.
 
 # Mesa
 
@@ -278,10 +279,10 @@ to the Wayland compositor because there's no protocol.
 Ville Syrjälä created a proof-of-concept branch of Mesa back in 2017 to have
 Mesa use the Wayland protocol proposal (of the time), and I [rebased
 it](https://gitlab.freedesktop.org/jcline/mesa/-/tree/hdr_poc) recently to
-"work" with the latest Wayland protocol proposal. It probably doesn't
-*actually* work, but it is a good approximation of the work required, which is
-implementing the standard's functions to call libwayland functions with the
-content encoding details.
+"work" with the latest Wayland protocol proposal. It doesn't *actually* work,
+but it is a good approximation of the work required, which is implementing the
+standard's functions to call libwayland functions with the content encoding
+details.
 
 # The Wayland Protocol
 
