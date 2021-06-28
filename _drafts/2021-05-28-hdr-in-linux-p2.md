@@ -24,9 +24,13 @@ Let's review the high-level requirements:
 
 - The Wayland display server (compositor) must determine the display
   capabilities (color primaries and white point, luminance, transfer function,
-  bits per component, etc), and client applications may also want this
-  information. In our case, the video player doesn't need to know it as either
-  the Wayland display server or the display itself will handle tone-mapping.
+  bits per component, etc) in order to know what outputs are possible and/or
+  optimal.
+
+- Client applications may want to know what content encoding the Wayland
+  display server supports and maybe even what the optimal content encoding is
+  for the display it is on (the native primaries, transfer function, bit depth,
+  luminance capabilities, and so on)
 
 - Client applications need to express the transfer function, bit depth, color
   space, and any HDR metadata for its content (the "content encoding") to the
@@ -35,14 +39,15 @@ Let's review the high-level requirements:
   can handle.
 
 You might be familiar with text encoding. Adding HDR support is very similar to
-adding support for various Unicode encoding formats when previously everything
-assumed content was encoded with ASCII.
+adding support for various text encoding formats when previously everything
+assumed content was encoded with ASCII. Instead of ASCII, the graphics stack
+largely assumes everything is sRGB.
 
 # Totem
 
-[Totem](https://gitlab.gnome.org/GNOME/totem) provides the user interface and
-playback management features. It relies on GStreamer to deal with the video
-itself. It [appears to
+At the top of the stack we have [Totem](https://gitlab.gnome.org/GNOME/totem),
+which provides the user interface and playback management features. It relies
+on GStreamer to deal with the video itself. It [appears to
 use](https://gitlab.gnome.org/GNOME/totem/-/blob/V_3_38_0/src/backend/bacon-video-widget.c#L6155)
 the
 [playbin](https://gstreamer.freedesktop.org/documentation/playback/playbin.html)
@@ -197,6 +202,20 @@ Even with this approach, GTK cannot blend the SDR content into HDR content
 without considering what luminance range to map SDR content to, which needs to
 correspond to the display brightness level the user has set.
 
+### Use Sub-surfaces Outside GTK
+
+Applications can work around GTK not dealing with content encoding by not using
+GTK for anything other than the menus, buttons, and so on. In fact, this is how
+Firefox handles things; GTK is used for the "chrome" and the content is
+rendered to a Wayland sub-surface which Firefox manages itself and overlays on
+the GTK surface. This sub-surface can be properly configured for HDR and the
+compositor can handle blending it with GTK's surface.
+
+This, of course, isn't ideal as the applications have to work around the
+toolkit rather than having the toolkit help them. However, it is a path
+forward worth mentioning.
+
+
 # Mesa
 
 Mesa provides the OpenGL implementation that clients like GTK use to render
@@ -279,9 +298,9 @@ to the Wayland compositor because there's no protocol.
 Ville Syrjälä created a proof-of-concept branch of Mesa back in 2017 to have
 Mesa use the Wayland protocol proposal (of the time), and I [rebased
 it](https://gitlab.freedesktop.org/jcline/mesa/-/tree/hdr_poc) recently to
-"work" with the latest Wayland protocol proposal. It doesn't *actually* work,
-but it is a good approximation of the work required, which is implementing the
-standard's functions to call libwayland functions with the content encoding
+"work" with the latest Wayland protocol proposal. It doesn't *actually* work
+yet, but it is a good approximation of the work required, which is implementing
+the standard's functions to call libwayland functions with the content encoding
 details.
 
 # The Wayland Protocol
@@ -304,11 +323,12 @@ include. The client needs to inform the server of:
 * The transfer function used to encode the luminance.
 
 * HDR metadata when it is available - in the case of Totem playing an HDR
-  movie, HDR metadata will be available.
+  movie, HDR metadata will be available. This metadata may remain the same for
+  many frames (perhaps the whole movie), or it may change frame-by-frame.
 
-Without these facts, the Wayland display server cannot properly tone-map or
-blend the content, nor could it offload those tasks to dedicated GPU hardware
-or the display since they both need the same information.
+Without this information, the Wayland display server cannot properly tone-map
+or blend the content, nor could it offload those tasks to dedicated GPU
+hardware or the display since they both need the same information.
 
 The protocol includes an object that represents a rectangular area that can be
 displayed, the
@@ -352,7 +372,7 @@ from targeting the display's capabilities.
 Wayland display server. Once a protocol is in place, Mutter needs to implement
 it. To support HDR, Mutter needs to be able to:
 
-* Inform clients of display capabilities
+* Inform clients of display capabilities.
 
 * Act upon the content encoding provided by the clients to correctly convert
   all content to the same encoding and blend them all together into the desktop
@@ -362,7 +382,12 @@ To inform clients of the display capabilities, Mutter can use the Extended
 Display Identification Data (EDID) from the kernel, which contains the display
 color primaries, supported HDR formats, and so on. It will be covered in detail
 in the kernel section below. The EDID is, in fact, already being used in Mutter
-so this will be a small addition to that.
+so this will be a small addition to that. There is some trickiness around
+multi-monitor setups as clients don't generally know which monitor they are
+being displayed on, but displays with differing pixel density have a similar
+challenge and Wayland handles that by providing events to the application when
+it enters a new display and the display content encoding could work the same
+way.
 
 To act upon the client-provided content encoding, however, requires a bit more
 work.
@@ -380,28 +405,91 @@ profile by calling Mutter D-Bus APIs.
 
 Mutter needs to be aware of each display's color profile in order transform the
 client content if necessary. The existing API for setting color profiles is
-also difficult to use because it acts on CRTC objects rather than displays,
-which can be backed by several CRTCs in certain scenarios. It makes more sense
-for Mutter to query colord itself rather than having gnome-settings-daemon do
-it. gnome-settings-daemon also handles the Night Light feature, which adjusts
-the color profile to shift the white point towards red to remove the blue
-light. Mutter needs to either handle the Night Light feature or, preferably,
-provide a "temperature" API and allow Mutter users to control when and how much
-to adjust the color temperature.
+also difficult to use because it acts on CRTC objects rather than displays.
+Some displays are composed of multiple panels tiled together and are therefore
+backed by several CRTCs. It makes more sense for Mutter to query colord itself
+rather than having gnome-settings-daemon do it.  gnome-settings-daemon also
+handles the Night Light feature, which adjusts the color profile to shift the
+white point towards red to remove the blue light.  Mutter needs to either
+handle the Night Light feature or, preferably, provide a "temperature" API and
+allow Mutter users to control when and how much to adjust the color
+temperature.
 
 ## Support Converting Buffer Formats
 
-TODO YUV Support. Also TODO Why does it even work now? What happens to YUV
-buffers?
+There are a number of ways to store an image, but they generally fall into two
+categories. The first is to represent the red, green, and blue components, and
+that's the way we've been discussing images in this blog post series.
 
-## Composite in a Single Color Space
+Another way is to represent the luminance of a pixel, and then two color
+components for that same pixel. The third color component can be calculated
+using the lumanince and two known color components. This approach is commonly
+referred to as [YUV](https://en.wikipedia.org/wiki/YUV) although there are
+several flavors. This is a valuable approach because humans are more spatially
+sensitive to luminance than they are color which means it's possible to produce
+a reasonably good-looking image even if you keep track of, say, every other
+pixel's color. This is called [chroma
+subsampling](https://en.wikipedia.org/wiki/Chroma_subsampling).
 
-TODO Ensure all buffers are converted to a single color space and probably
-linear (optical) luminance values (how does it even work now?)
+A lot of content, like films, are encoded using this approach, but at the
+moment Mutter does not support YUV formats. It would be convenient, since we're
+adding a way for clients to communicate content encoding, to handle such
+formats. There has been some work in this area by [Niels De
+Graef](https://gitlab.gnome.org/GNOME/mutter/-/commits/wip/nielsdg/meta-multi-texture-wip).
+
+## Compositing the Content
+
+Once Mutter has knowledge of the content encoding of every surface, it can
+blend them together and convert them to the target encoding of the display.
+This involves:
+
+1. Convert YUV to RGB if necessary.
+
+2. Perform a color space transformation so that all surfaces are using the same
+   color primaries and whitepoint.
+
+3. Removing the transfer function on surfaces so that Mutter is dealing with
+   the optical (linear) values rather than the non-linear on-the-wire encoding.
+   Adding two non-linear values together without accounting for the
+   non-linearity results in incorrect luminance levels. You can try this with
+   the following Python snippet:
+
+   ```
+   def gamma(u):
+       """Apply the sRGB gamma definition to linear light levels"""
+       return 1.055 * u**1/24 - 0.055
+   ```
+
+   Consider adding linear light level 50 to linear light level 50 and then
+   applying the transfer function versus adding the non-linear encoding of 50
+   to itself:
+
+   ```
+    >>> gamma(100)
+    1.2231616798531606
+    >>> gamma(50) + gamma(50)
+    2.3735497958717904
+   ```
+
+4. Blend the surfaces together. This becomes tricky with HDR since SDR does not
+   have a clearly defined luminance range, it's just how bright your display is
+   set, but PQ-encoded content does have a luminance range. Mutter will need
+   define the SDR luminance range and map that content into the well-defined
+   HDR range to ensure SDR content isn't too dim or too bright.
 
 ## Tone-mapping
 
-TODO Tone-mapping, mixing HDR and SDR
+With HDR, clients may provide surfaces that encode luminances beyond the
+capabilities of the target display. Displays account for this by tone-mapping
+out-of-range content into the display range. This is described in [Section
+5.4.1 of
+BT.2390](https://www.itu.int/dms_pub/itu-r/opb/rep/R-REP-BT.2390-8-2020-PDF-E.pdf).
+The important thing to know is that providing the display with out-of-range
+luminance levels will result in something that looks fine to most end users,
+but there may be a desire to carefully control what happens when this occurs.
+
+Mutter would be responsible for implementing alternate tone-mapping if the
+display's default behavior is unacceptable for the user.
 
 # The Kernel
 
@@ -512,7 +600,7 @@ capabilities. Of particular interest is the diagram around page 258 which
 illustrates the plane pipeline.
 
 One or more planes are used to compose the image the
-[CRTC](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#crtc-abstraction),
+[CRTC](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#crtc-abstraction)
 scans out to the display.
 
 ### Decoding, Color Space Transformations, Blending, and Encoding
