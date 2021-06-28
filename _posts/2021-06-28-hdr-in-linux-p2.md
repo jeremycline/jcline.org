@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "HDR in Linux: Part 2"
-date:   2021-05-20 15:05:08 -0400
+date:   2021-06-28 14:36:30 -0400
 categories: blog fedora graphics hdr
 ---
 
@@ -43,7 +43,7 @@ adding support for various text encoding formats when previously everything
 assumed content was encoded with ASCII. Instead of ASCII, the graphics stack
 largely assumes everything is sRGB.
 
-# Totem
+## Totem
 
 At the top of the stack we have [Totem](https://gitlab.gnome.org/GNOME/totem),
 which provides the user interface and playback management features. It relies
@@ -59,7 +59,7 @@ plugin, GStreamer needs to be HDR-aware. Totem uses GTK and Clutter-GTK to
 create the user interface, so those libraries are also something we should
 examine.
 
-# GStreamer
+## GStreamer
 
 Based on the GStreamer documentation and [this talk by Edward
 Hervey](https://gstconf.ubicast.tv/videos/hdr-seeing-the-world-as-it-is/) all
@@ -99,7 +99,7 @@ As long as the metadata GStreamer extracts is passed to the relevant EGL or
 Vulkan API, we are all set. Mesa includes implementations of EGL and Vulkan
 WSI, so we will examine those after GTK.
 
-# Clutter-GTK
+## Clutter-GTK
 
 In the section on Totem, we noted that it uses
 [Clutter-GTK](https://gitlab.gnome.org/GNOME/clutter-gtk). The documentation is
@@ -114,7 +114,7 @@ the README notes it is in "deep maintenance mode" and is intended to be
 replaced with GTK 4. Based on the commit log this is true, so we will look no
 further and focus on GTK 4.0.
 
-# GTK
+## GTK
 
 [GTK](https://docs.gtk.org/) is a "widget toolkit". It provides, either through
 a dependency or on its own, an application abstraction, event loop, rendering
@@ -127,7 +127,7 @@ OpenGL APIs offer the necessary interfaces to handle HDR content, but GTK's
 rendering model introduces a few issues. To understand the difficulties we need
 to understand how GTK builds the application window.
 
-## A Window into GTK
+### A Window into GTK
 
 GTK documents its [drawing model](https://docs.gtk.org/gtk4/drawing-model.html)
 in some detail and it would best to read through it before proceeding.
@@ -158,14 +158,14 @@ This means, unfortunately, that at the moment there is no way to use GTK for an
 application interested in producing HDR content (video players, image viewers,
 content creation tools, etc).
 
-## Ways Forward
+### Ways Forward
 
 There are a few ways for GTK to work in a world where sRGB isn't the only
 content. I can't really say which approach is best, or even if this is an
 exhaustive list of options since my knowledge of GTK is only a few days old.
 Regardless, a good bit of work is necessary to make GTK HDR-ready.
 
-### Widgets with Content Encoding
+#### Widgets with Content Encoding
 
 One solution, if GTK wishes to remain in the business of blending images
 together, is to ensure each widget includes a way to express how the content it
@@ -177,7 +177,7 @@ course, introduces a reasonable amount of complexity to GTK as it needs to
 convert between a potentially long list of formats in addition to introducing
 interfaces for specifying the content encoding everywhere it matters.
 
-### Sub-surfaces
+#### Sub-surfaces
 
 Wayland offers a way to create surfaces with a parent-child relationship called
 [subsurfaces](https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_subsurface).
@@ -188,7 +188,7 @@ while allowing applications to handle modern content with other content
 encoding. However, I am told these are problematic as they cannot be clipped or
 transformed by GTK.
 
-### Require a single HDR Format
+#### Require a single HDR Format
 
 Rather than handling converting all the widgets to the same content encoding,
 GTK could specify *one* HDR-capable format it supports and require all widgets
@@ -202,7 +202,7 @@ Even with this approach, GTK cannot blend the SDR content into HDR content
 without considering what luminance range to map SDR content to, which needs to
 correspond to the display brightness level the user has set.
 
-### Use Sub-surfaces Outside GTK
+#### Use Sub-surfaces Outside GTK
 
 Applications can work around GTK not dealing with content encoding by not using
 GTK for anything other than the menus, buttons, and so on. In fact, this is how
@@ -216,14 +216,14 @@ toolkit rather than having the toolkit help them. However, it is a path
 forward worth mentioning.
 
 
-# Mesa
+## Mesa
 
 Mesa provides the OpenGL implementation that clients like GTK use to render
 their content. To allocate storage for the output of that rendering, clients
 use the EGL or Vulkan WSI interfaces for which Mesa also provides
 implementations.
 
-## EGL
+### EGL
 
 The full [EGL standard](https://www.khronos.org/egl) is available online. Of
 particular interest to us are the interfaces for creating surfaces.
@@ -273,7 +273,7 @@ While it is a dizzying array of extensions, EGL already includes all the
 metadata and APIs to send the content encoding from the client (Totem, by way
 of GStreamer) to the Wayland compositor.
 
-## Vulkan WSI
+### Vulkan WSI
 
 The Vulkan Window System Interface requires much less bouncing between
 extensions to determine how it all works.
@@ -303,7 +303,7 @@ yet, but it is a good approximation of the work required, which is implementing
 the standard's functions to call libwayland functions with the content encoding
 details.
 
-# The Wayland Protocol
+## The Wayland Protocol
 
 As we touched on in the Mesa section, the Wayland protocol is still being
 discussed. The discussion is extensive, and I cannot do it justice in this
@@ -366,7 +366,7 @@ with tone-mapping and would not need to know about what displays it might be
 targeting. However, something like a video that generates content would benefit
 from targeting the display's capabilities.
 
-# Mutter
+## Mutter
 
 [Mutter](https://gitlab.gnome.org/GNOME/mutter) is, among other things, a
 Wayland display server. Once a protocol is in place, Mutter needs to implement
@@ -392,7 +392,7 @@ way.
 To act upon the client-provided content encoding, however, requires a bit more
 work.
 
-## Consolidating Existing Color Management
+### Consolidating Existing Color Management
 
 GNOME already has some color management capabilities. At the moment, they are
 split up in gnome-settings-daemon, colord, and Mutter.
@@ -415,7 +415,7 @@ handle the Night Light feature or, preferably, provide a "temperature" API and
 allow Mutter users to control when and how much to adjust the color
 temperature.
 
-## Support Converting Buffer Formats
+### Support Converting Buffer Formats
 
 There are a number of ways to store an image, but they generally fall into two
 categories. The first is to represent the red, green, and blue components, and
@@ -437,7 +437,7 @@ adding a way for clients to communicate content encoding, to handle such
 formats. There has been some work in this area by [Niels De
 Graef](https://gitlab.gnome.org/GNOME/mutter/-/commits/wip/nielsdg/meta-multi-texture-wip).
 
-## Compositing the Content
+### Compositing the Content
 
 Once Mutter has knowledge of the content encoding of every surface, it can
 blend them together and convert them to the target encoding of the display.
@@ -457,7 +457,7 @@ This involves:
    ```
    def gamma(u):
        """Apply the sRGB gamma definition to linear light levels"""
-       return 1.055 * u**1/24 - 0.055
+       return 1.055 * u**(1/24) - 0.055
    ```
 
    Consider adding linear light level 50 to linear light level 50 and then
@@ -473,11 +473,11 @@ This involves:
 
 4. Blend the surfaces together. This becomes tricky with HDR since SDR does not
    have a clearly defined luminance range, it's just how bright your display is
-   set, but PQ-encoded content does have a luminance range. Mutter will need
-   define the SDR luminance range and map that content into the well-defined
-   HDR range to ensure SDR content isn't too dim or too bright.
+   set, but PQ-encoded content does have a well-defined luminance range. Mutter
+   will need define the SDR luminance range and map that content into that
+   well-defined range to ensure SDR content isn't too dim or too bright.
 
-## Tone-mapping
+### Tone-mapping
 
 With HDR, clients may provide surfaces that encode luminances beyond the
 capabilities of the target display. Displays account for this by tone-mapping
@@ -489,21 +489,22 @@ luminance levels will result in something that looks fine to most end users,
 but there may be a desire to carefully control what happens when this occurs.
 
 Mutter would be responsible for implementing alternate tone-mapping if the
-display's default behavior is unacceptable for the user.
+display's default behavior is unacceptable for the user. This would most likely
+be a concern for content creators.
 
-# The Kernel
+## The Kernel
 
 We have arrived at the kernel, the final stop in this journey down the stack.
 The good news is that the basic requirements for HDR have already been met.
 We'll touch on those and then look at additional features necessary for us to
 use certain hardware features.
 
-## The Bare Minimum
+### The Bare Minimum
 
 These are the bare minimum features for HDR and are already present in the
 kernel.
 
-### Display Capabilities
+#### Display Capabilities
 
 As we noted in the Mutter section, the
 [EDID](https://en.wikipedia.org/wiki/Extended_Display_Identification_Data)
@@ -547,7 +548,7 @@ time there is not a dedicated kernel interface to retrieve a standalone
 DisplayID structure that I am aware of. The work to add one would be minimal,
 however, since it's extremely similar to the EDID.
 
-### HDR Metadata
+#### HDR Metadata
 
 The kernel exposes a `HDR_OUTPUT_METADATA` [connector
 property](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#standard-connector-properties)
@@ -559,7 +560,7 @@ which corresponds to the HDR metadata defined in CTA-861 in section 6.9
 "Dynamic Range and Mastering InfoFrame". This *should* be all that is required
 for HDR10 and HDR10+ content.
 
-### Bits Per Component
+#### Bits Per Component
 
 The ``max bpc`` standard connector property is a [range
 property](https://www.kernel.org/doc/html/latest/gpu/drm-kms.html#property-types-and-blob-property-support)
@@ -567,7 +568,7 @@ that allows the hardware driver to indicate valid bits per color component.
 Userspace can set this property so long as it is within the driver-provided
 range to control the output bit depth.
 
-## Nice-to-have Features
+### Nice-to-have Features
 
 The bare minimum feature set is present for HDR content and allows us to query
 display capabilities, pass HDR metadata on to the display, and configure the
@@ -581,7 +582,7 @@ those operations and it would be great to use them when they are there rather
 than performing the operations using expensive CPU or general purpose graphics
 shaders cycles.
 
-### Planes
+#### Planes
 
 Before we cover the encoding, decoding, color space transformations, and so on,
 it's important to become familiar with
@@ -603,7 +604,7 @@ One or more planes are used to compose the image the
 [CRTC](https://www.kernel.org/doc/html/v5.12/gpu/drm-kms.html#crtc-abstraction)
 scans out to the display.
 
-### Decoding, Color Space Transformations, Blending, and Encoding
+#### Decoding, Color Space Transformations, Blending, and Encoding
 
 Graphics hardware typically provides hardware dedicated to efficiently decode,
 transform, and re-encode images. Encoding are decoding are done with look-up
@@ -655,6 +656,17 @@ Harry Wentland from AMD recently started a [discussion on API changes for
 planes](https://lore.kernel.org/dri-devel/20210426173852.484368-1-harry.wentland@amd.com/)
 which looks to address these shortcomings.
 
-# Summary
+## Summary
 
-TODO summarize the TODOs
+All told, a good portion of the work necessary for basic HDR support is done or
+in progress. Some of the larger challenges are in the compositors as they need
+to line up client capabilities with hardware capabilities and make up any
+differences between the two.
+
+Applications that use OpenGL or Vulkan directly don't need to concern
+themselves with GTK's lack of HDR support. However, there are a non-trivial
+handful of applications that would benefit from GTK supporting HDR content,
+like Totem, Eye of GNOME (the image viewer), and content creation tools.
+
+Finally, there's plenty of work on the kernel side to ensure userspace can make
+use of all the hardware available to it.
