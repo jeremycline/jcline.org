@@ -30,7 +30,7 @@ Let's review the high-level requirements:
 - Client applications may want to know what content encoding the Wayland
   display server supports and maybe even what the optimal content encoding is
   for the display it is on (the native primaries, transfer function, bit depth,
-  luminance capabilities, and so on)
+  luminance capabilities, etc)
 
 - Client applications need to express the transfer function, bit depth, color
   space, and any HDR metadata for its content (the "content encoding") to the
@@ -149,10 +149,10 @@ widgets that all use the same content encoding. Unfortunately, GTK does not
 offer a way specify what content encoding to use for widgets it renders, nor
 does it provide a way for users to convey the content encoding *they* are using
 for their custom widgets. All content GTK produces on the application's behalf,
-like buttons, menus, the window decorations, and so on, are rendered in an
-undefined color space with an undefined transfer function. In practice, this
-seems to be sRGB.  All textures GTK creates are hard-coded to use 8 bits per
-component, including when it combines all the widgets into a single image.
+like buttons, menus, and the window decorations are rendered in an undefined
+color space with an undefined transfer function. In practice, this seems to be
+sRGB.  All textures GTK creates are hard-coded to use 8 bits per component,
+including when it combines all the widgets into a single image.
 
 This means, unfortunately, that at the moment there is no way to use GTK for an
 application interested in producing HDR content (video players, image viewers,
@@ -607,10 +607,10 @@ scans out to the display.
 #### Decoding, Color Space Transformations, Blending, and Encoding
 
 Graphics hardware typically provides hardware dedicated to efficiently decode,
-transform, and re-encode images. Encoding are decoding are done with look-up
+transform, and re-encode images. Encoding and decoding are done with look-up
 tables that approximate the smooth curve of the desired transfer function by
 mapping encoded values to optical values and optical values to encoded values.
-For historical reasons, these are referred to as the de-gamma and gamma LUTs
+For historical reasons, these are referred to as the gamma and de-gamma LUTs
 respectively.
 
 The hardware-backed look-up tables for encoding and decoding content with an
