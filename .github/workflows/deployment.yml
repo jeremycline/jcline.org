@@ -21,7 +21,7 @@ jobs:
           GEM_HOME="$HOME/gems" gem install jekyll bundler
 
       - name: Build
-        run: $HOME/gems/bin/jekyll build
+        run: GEM_HOME="$HOME/gems" $HOME/gems/bin/jekyll build
 
       - name: Upload to blob storage
         uses: azure/CLI@v1
