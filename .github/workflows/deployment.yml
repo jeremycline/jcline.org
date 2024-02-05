@@ -30,4 +30,4 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az storage blob upload-batch --account-name $${{ secrets.AZURE_ACCOUNT_NAME }} --auth-mode key -d '$web' -s _/site/
+            az storage blob upload-batch --account-name="${{ secrets.AZURE_ACCOUNT_NAME }}" --auth-mode key -d '$web' -s _/site/
