@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Re-designing signing in Fedora"
-date:   2025-09-09 12:17:00 -0400
+date:   2025-07-09 12:17:00 -0400
 categories: blog fedora signing
 ---
 
@@ -19,6 +19,10 @@ defined by the Python implementation. However, as I got more familiar with the
 implementation, I felt that it would be better to use this opportunity to also
 change the protocol. In this post I'm going to cover the issues I have with
 the current protocol and how I'd like to address them.
+
+Note: I assume you've read [how artifacts are signed in
+Fedora](https://www.jcline.org/blog/fedora/signing/2025/03/28/fedora-artifact-signing-p1.html)
+in the post.
 
 
 ## Mixing TLS sessions
