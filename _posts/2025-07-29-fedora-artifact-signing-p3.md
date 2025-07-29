@@ -163,3 +163,8 @@ same way](https://github.com/fedora-infra/siguldry/issues/49). I need to
 understand the various signature formats and specifications, as well as the
 content we sign. The goal is to offer broad support without requiring
 constantly teaching the server about new types of content.
+
+
+## Comments and Feedback
+
+Thoughts, comments, or feedback greatly welcomed on [Mastodon](https://hachyderm.io/@jcline/114937982823195105)
