@@ -100,4 +100,4 @@ tools to migrate the Sigul database to Siguldry.
 
 ## Comments and Feedback
 
-Thoughts, comments, or feedback greatly welcomed on [Mastodon](https://hachyderm.io/@jcline/)
+Thoughts, comments, or feedback greatly welcomed on [Mastodon](https://hachyderm.io/@jcline/115226068075225348)
